@@ -6,13 +6,22 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private int height = 4; // c
 
     private int[,] board;
+    private bool[,] isNew;
+    
 
     void Start()
     {
         SetBoard();
+
+        // ”Õ–Ê‰º’i‚ğì‚é
+        DropNumber(0, 2); // ¶
+        DropNumber(2, 2); // ‰E
+
+        // ^‚ñ’†‚Éå–ğ‚ğ—‚Æ‚·
         DropNumber(1, 2);
-        DropNumber(1, 4);
-        ApplyGravity();
+
+        ApplyMerge();
+        ClearIsNew();
         PrintBoard();
     }
 
@@ -22,12 +31,14 @@ public class BoardManager : MonoBehaviour
     private void SetBoard()
     {
         board = new int[width, height];
+        isNew = new bool[width, height];
 
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
                 board[x, y] = 0;
+                isNew[x, y] = false;
             }
         }
     }
@@ -39,11 +50,12 @@ public class BoardManager : MonoBehaviour
     /// <param name="value">“ü‚ê‚é”š</param>
     void DropNumber(int x, int value)
     {
-        for (int y = 0; y < 4; y++)
+        for (int y = 0; y < height; y++)
         {
             if (board[x, y] == 0)
             {
                 board[x, y] = value;
+                isNew[x, y] = true;
                 return;
             }
         }
@@ -59,7 +71,7 @@ public class BoardManager : MonoBehaviour
         for (int y = height - 1; y >= 0; y--)
         {
             string line = "";
-            for (int x = 0; x < height; x++)
+            for (int x = 0; x < width; x++)
             {
                 line += board[x, y] + " ";
             }
@@ -86,9 +98,90 @@ public class BoardManager : MonoBehaviour
                         board[x, y - 1] = board[x, y];
                         board[x, y] = 0;
 
+                        isNew[x, y - 1] = isNew[x, y];
+                        isNew[x, y] = false;
                         moved = true;
                     }
             }
         } while (moved);
+    }
+
+    void ApplyMerge()
+    {
+        bool merged;
+
+        do
+        {
+            merged = false;
+
+            if (ApplyMergeVertical())
+                merged = true;
+
+            if (ApplyMergeHorizontal())
+                merged = true;
+        } while (merged);
+    }
+
+    bool ApplyMergeVertical()
+    {
+        bool merged = false;
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 1; y < height; y++)
+            {
+                if (board[x, y] != 0 && board[x, y] == board[x, y - 1])
+                {
+                    board[x, y - 1] *= 2;
+                    board[x, y] = 0;
+
+                    isNew[x, y - 1] = true;
+                    merged = true;
+                    ApplyGravity();
+                }
+            }
+        }
+        return merged;
+    }
+
+    bool ApplyMergeHorizontal()
+    {
+        bool merged = false;
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (board[x, y] != 0 && x > 0 && board[x, y] == board[x - 1, y])
+                {
+                    board[x, y] *= 2;
+                    board[x - 1, y] = 0;
+
+                    isNew[x, y] = true;
+                    isNew[x - 1, y] = false;
+                    merged = true;
+                    ApplyGravity();
+                }
+
+                if (isNew[x, y] && x < width - 1 && board[x, y] == board[x + 1, y])
+                {
+                    board[x, y] *= 2;
+                    board[x + 1, y] = 0;
+
+                    isNew[x,y] = true;
+                    isNew[x + 1, y] = false;
+                    merged = true;
+                    ApplyGravity();
+                }
+            }
+        }
+        return merged;
+    }
+
+    void ClearIsNew()
+    {
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+                isNew[x, y] = false;
     }
 }
