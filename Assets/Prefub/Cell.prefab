@@ -293,6 +293,9 @@ MonoBehaviour:
   y: 0
   valueText: {fileID: 2646989102719658574}
   bg: {fileID: 7806259170310063114}
+  emptyColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  maxColor: {r: 0, g: 1, b: 0.25339866, a: 1}
+  maxLevel: 11
 --- !u!222 &8335435283284272864
 CanvasRenderer:
   m_ObjectHideFlags: 0

@@ -1,6 +1,5 @@
-using UnityEngine;
+﻿using UnityEngine;
 using TMPro;
-using UnityEngine.UI;
 
 public class CellView : MonoBehaviour
 {
@@ -10,25 +9,32 @@ public class CellView : MonoBehaviour
     [SerializeField] private TextMeshPro valueText;
     [SerializeField] private SpriteRenderer bg;
 
-    private void Start()
+    [Header("Color Settings")]
+    [SerializeField] private float saturation = 0.8f;
+    [SerializeField] private float value = 0.9f;
+    [SerializeField] private int maxLevel = 11; // 2048想定
+
+    private void Awake()
     {
-        bg = GetComponent<SpriteRenderer>();
+        if (!bg) bg = GetComponent<SpriteRenderer>();
     }
 
-    public void SetValue(int value)
+    public void SetValue(int v)
     {
-        valueText.text = value == 0 ? "" : value.ToString();
-        bg.color = GetColor(value);
+        valueText.text = v == 0 ? "" : v.ToString();
+        bg.color = GetColor(v);
     }
 
-    Color GetColor(int value)
+    Color GetColor(int v)
     {
-        if (value == 0) return Color.gray;
-        if (value == 2) return new Color(0.9f, 0.9f, 0.8f);
-        if (value == 4) return new Color(0.9f, 0.8f, 0.6f);
-        return Color.white;
+        if (v == 0) return Color.gray;
+
+        int level = (int)Mathf.Log(v, 2);
+        float t = Mathf.Clamp01((float)level / maxLevel);
+
+        // 色相を 0〜360° 回す
+        float hue = t; // 0〜1（Unityは0〜1）
+
+        return Color.HSVToRGB(hue, saturation, value);
     }
-
-
 }
-
