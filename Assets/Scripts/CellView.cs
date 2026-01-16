@@ -1,40 +1,35 @@
 ﻿using UnityEngine;
 using TMPro;
+using DG.Tweening;
 
 public class CellView : MonoBehaviour
 {
-    public int x;
-    public int y;
+    [SerializeField] TextMeshPro valueText;
+    [SerializeField] SpriteRenderer bg;
 
-    [SerializeField] private TextMeshPro valueText;
-    [SerializeField] private SpriteRenderer bg;
-
-    [Header("Color Settings")]
-    [SerializeField] private float saturation = 0.8f;
-    [SerializeField] private float value = 0.9f;
-    [SerializeField] private int maxLevel = 11; // 2048想定
-
-    private void Awake()
-    {
-        if (!bg) bg = GetComponent<SpriteRenderer>();
-    }
+    Tween moveTween;
 
     public void SetValue(int v)
     {
         valueText.text = v == 0 ? "" : v.ToString();
-        bg.color = GetColor(v);
     }
 
-    Color GetColor(int v)
+    public void MoveTo(Vector3 pos, float duration)
     {
-        if (v == 0) return Color.gray;
+        moveTween?.Kill();
+        moveTween = transform.DOMove(pos, duration);
+    }
 
-        int level = (int)Mathf.Log(v, 2);
-        float t = Mathf.Clamp01((float)level / maxLevel);
+    public void PlayMergeEffect()
+    {
+        transform.DOKill();
+        transform.localScale = Vector3.one;
+        transform.DOScale(1.2f, 0.12f).SetLoops(2, LoopType.Yoyo);
+    }
 
-        // 色相を 0〜360° 回す
-        float hue = t; // 0〜1（Unityは0〜1）
-
-        return Color.HSVToRGB(hue, saturation, value);
+    void OnDestroy()
+    {
+        moveTween?.Kill();
+        transform.DOKill();
     }
 }

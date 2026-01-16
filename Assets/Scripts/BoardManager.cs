@@ -4,26 +4,19 @@ public class BoardManager : MonoBehaviour
 {
     [SerializeField] GameObject cellPrefab;
     [SerializeField] float cellSize = 1.1f;
+    [SerializeField] float fallDuration = 0.15f;
     [SerializeField] int width = 4;
     [SerializeField] int height = 4;
 
     int[,] board;
-    bool[,] moved;
-    CellView[,] cells;
+    CellView[,] cellMap;
+
+    Vector2Int? hero;
 
     void Start()
     {
         board = new int[width, height];
-        moved = new bool[width, height];
-        cells = new CellView[width, height];
-
-        CreateGrid();
-
-        // テスト初期配置
-        DropNumber(2, 2);
-        DropNumber(1, 2);
-
-        UpdateView();
+        cellMap = new CellView[width, height];
     }
 
     void Update()
@@ -34,53 +27,131 @@ public class BoardManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Alpha4)) PlayerDrop(3);
     }
 
+    // =====================
+    // プレイヤー操作
+    // =====================
+
     void PlayerDrop(int x)
     {
-        DropNumber(x, 2);
+        hero = DropNumber(x, 2);
         ResolveBoard();
-        UpdateView();
     }
+
+    // =====================
+    // 盤面解決ループ
+    // =====================
 
     void ResolveBoard()
     {
-        while (true)
+        while (hero.HasValue)
         {
-            ClearMoved();
+            // 主役連鎖フェーズ
+            while (TryHeroMerge()) { }
+
+            // 重力フェーズ
             ApplyGravity();
 
-            if (MergeVerticalOnce()) continue;
-            if (MergeHorizontalOnce()) continue;
-
-            break;
+            // 重力後に次の主役を探す
+            hero = FindNextHeroAfterGravity();
         }
     }
 
-    void ClearMoved()
-    {
-        for (int x = 0; x < width; x++)
-            for (int y = 0; y < height; y++)
-                moved[x, y] = false;
-    }
+    // =====================
+    // 主役合体判定
+    // =====================
 
-    void DropNumber(int x, int value)
+    bool TryHeroMerge()
     {
-        for (int y = 0; y < height; y++)
+        var h = hero.Value;
+        int x = h.x;
+        int y = h.y;
+        int v = board[x, y];
+
+        // 縦合体（最優先・必ず下）
+        if (y > 0 && board[x, y - 1] == v)
         {
-            if (board[x, y] == 0)
-            {
-                board[x, y] = value;
-                moved[x, y] = true;
-                return;
-            }
+            MergeDown(x, y);
+            return true;
         }
+
+        // 横合体（主役優先・左→右）
+        if (x > 0 && board[x - 1, y] == v)
+        {
+            MergeHorizontalHero(x, y, x - 1, y);
+            return true;
+        }
+        if (x < width - 1 && board[x + 1, y] == v)
+        {
+            MergeHorizontalHero(x, y, x + 1, y);
+            return true;
+        }
+
+        return false;
     }
+
+    // =====================
+    // 合体処理
+    // =====================
+
+    // 縦合体：必ず下に合体
+    void MergeDown(int x, int y)
+    {
+        board[x, y - 1] *= 2;
+        board[x, y] = 0;
+
+        var main = cellMap[x, y - 1];
+        var dead = cellMap[x, y];
+
+        if (main != null)
+        {
+            main.SetValue(board[x, y - 1]);
+            main.PlayMergeEffect();
+        }
+
+        if (dead != null)
+        {
+            Destroy(dead.gameObject);
+            cellMap[x, y] = null;
+        }
+
+        hero = new Vector2Int(x, y - 1);
+    }
+
+    // 横合体：主役セルに合体
+    void MergeHorizontalHero(int hx, int hy, int dx, int dy)
+    {
+        board[hx, hy] *= 2;
+        board[dx, dy] = 0;
+
+        var main = cellMap[hx, hy];
+        var dead = cellMap[dx, dy];
+
+        if (main != null)
+        {
+            main.SetValue(board[hx, hy]);
+            main.PlayMergeEffect();
+        }
+
+        if (dead != null)
+        {
+            Destroy(dead.gameObject);
+            cellMap[dx, dy] = null;
+        }
+
+        hero = new Vector2Int(hx, hy);
+    }
+
+    // =====================
+    // 重力処理
+    // =====================
 
     void ApplyGravity()
     {
-        bool movedOnce;
+        bool moved;
         do
         {
-            movedOnce = false;
+            moved = false;
+
             for (int x = 0; x < width; x++)
             {
                 for (int y = 1; y < height; y++)
@@ -90,89 +161,72 @@ public class BoardManager : MonoBehaviour
                         board[x, y - 1] = board[x, y];
                         board[x, y] = 0;
 
-                        moved[x, y - 1] = true;
-                        moved[x, y] = false;
+                        var cell = cellMap[x, y];
+                        cellMap[x, y - 1] = cell;
+                        cellMap[x, y] = null;
 
-                        movedOnce = true;
+                        cell?.MoveTo(
+                            new Vector3(x * cellSize, (y - 1) * cellSize, 0),
+                            fallDuration
+                        );
+
+                        moved = true;
                     }
                 }
             }
-        } while (movedOnce);
-    }
-
-    bool MergeVerticalOnce()
-    {
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 1; y < height; y++)
-            {
-                if (board[x, y] != 0 && board[x, y] == board[x, y - 1])
-                {
-                    board[x, y] *= 2;
-                    board[x, y - 1] = 0;
-
-                    moved[x, y] = true;
-                    moved[x, y - 1] = false;
-
-                    return true;
-                }
-            }
         }
-        return false;
+        while (moved);
     }
 
-    bool MergeHorizontalOnce()
+    // =====================
+    // 重力後の主役探索
+    // =====================
+
+    Vector2Int? FindNextHeroAfterGravity()
     {
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width - 1; x++)
-            {
-                if (board[x, y] == 0) continue;
-                if (board[x, y] != board[x + 1, y]) continue;
-
-                bool leftMoved = moved[x, y];
-                bool rightMoved = moved[x + 1, y];
-
-                if (leftMoved && !rightMoved)
-                {
-                    board[x, y] *= 2;
-                    board[x + 1, y] = 0;
-
-                    moved[x, y] = true;
-                    moved[x + 1, y] = false;
-                }
-                else
-                {
-                    board[x + 1, y] *= 2;
-                    board[x, y] = 0;
-
-                    moved[x + 1, y] = true;
-                    moved[x, y] = false;
-                }
-
-                return true;
-            }
-        }
-        return false;
-    }
-
-    void CreateGrid()
-    {
+        // 左→右、下→上
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
-                var obj = Instantiate(cellPrefab);
-                obj.transform.position = new Vector3(x * cellSize, y * cellSize, 0);
-                cells[x, y] = obj.GetComponent<CellView>();
+                int v = board[x, y];
+                if (v == 0) continue;
+
+                // 縦
+                if (y > 0 && board[x, y - 1] == v)
+                    return new Vector2Int(x, y);
+
+                // 横
+                if (x > 0 && board[x - 1, y] == v)
+                    return new Vector2Int(x, y);
+                if (x < width - 1 && board[x + 1, y] == v)
+                    return new Vector2Int(x, y);
             }
         }
+        return null;
     }
 
-    void UpdateView()
+    // =====================
+    // セル生成
+    // =====================
+
+    Vector2Int? DropNumber(int x, int value)
     {
-        for (int x = 0; x < width; x++)
-            for (int y = 0; y < height; y++)
-                cells[x, y].SetValue(board[x, y]);
+        for (int y = 0; y < height; y++)
+        {
+            if (board[x, y] == 0)
+            {
+                board[x, y] = value;
+
+                var obj = Instantiate(cellPrefab);
+                obj.transform.position = new Vector3(x * cellSize, y * cellSize, 0);
+                var cell = obj.GetComponent<CellView>();
+                cell.SetValue(value);
+
+                cellMap[x, y] = cell;
+                return new Vector2Int(x, y);
+            }
+        }
+        return null;
     }
 }
