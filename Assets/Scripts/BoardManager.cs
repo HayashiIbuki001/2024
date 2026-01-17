@@ -2,152 +2,155 @@ using UnityEngine;
 
 public class BoardManager : MonoBehaviour
 {
+    // ===== 設定 =====
     [SerializeField] GameObject cellPrefab;
     [SerializeField] float cellSize = 1.1f;
-    [SerializeField] float fallDuration = 0.15f;
+    [SerializeField] float fallTime = 0.15f;
     [SerializeField] int width = 4;
     [SerializeField] int height = 4;
 
-    int[,] board;
-    CellView[,] cellMap;
+    // ===== 盤面データ =====
+    int[,] gridValues;          // 数値だけの盤面
+    CellView[,] cells;          // 見た目用セル
 
-    Vector2Int? hero;
+    Vector2Int? activeCell;     // 今合体判定しているセル
 
     void Start()
     {
-        board = new int[width, height];
-        cellMap = new CellView[width, height];
+        gridValues = new int[width, height];
+        cells = new CellView[width, height];
     }
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Alpha1)) PlayerDrop(0);
-        if (Input.GetKeyDown(KeyCode.Alpha2)) PlayerDrop(1);
-        if (Input.GetKeyDown(KeyCode.Alpha3)) PlayerDrop(2);
-        if (Input.GetKeyDown(KeyCode.Alpha4)) PlayerDrop(3);
+        if (Input.GetKeyDown(KeyCode.Alpha1)) DropByPlayer(0);
+        if (Input.GetKeyDown(KeyCode.Alpha2)) DropByPlayer(1);
+        if (Input.GetKeyDown(KeyCode.Alpha3)) DropByPlayer(2);
+        if (Input.GetKeyDown(KeyCode.Alpha4)) DropByPlayer(3);
     }
 
-    // =====================
-    // プレイヤー操作
-    // =====================
-
-    void PlayerDrop(int x)
+    /// <summary>
+    /// プレイヤー操作
+    /// </summary>
+    /// <param name="x">落下する行</param>
+    void DropByPlayer(int x)
     {
-        hero = DropNumber(x, 2);
-        ResolveBoard();
+        // セル生成 → アクティブセルに設定
+        activeCell = SpawnCell(x, 2);
+
+        // 盤面の合体・落下を解決
+        ResolveChain();
     }
 
-    // =====================
-    // 盤面解決ループ
-    // =====================
-
-    void ResolveBoard()
+    /// <summary>
+    /// 盤面処理
+    /// </summary>
+    void ResolveChain()
     {
-        while (hero.HasValue)
+        // 合体できるセルがある限り続ける
+        while (activeCell.HasValue)
         {
-            // 主役連鎖フェーズ
-            while (TryHeroMerge()) { }
+            // 合体できるだけ合体
+            while (TryMergeActiveCell()) { }
 
-            // 重力フェーズ
-            ApplyGravity();
+            // 重力適用
+            ApplyFall();
 
-            // 重力後に次の主役を探す
-            hero = FindNextHeroAfterGravity();
+            // 次に合体できるセルを探す
+            activeCell = FindNextActiveCell();
         }
     }
 
-    // =====================
-    // 主役合体判定
-    // =====================
-
-    bool TryHeroMerge()
+    /// <summary>
+    /// 合体判定
+    /// </summary>
+    /// <returns></returns>
+    bool TryMergeActiveCell()
     {
-        var h = hero.Value;
-        int x = h.x;
-        int y = h.y;
-        int v = board[x, y];
+        var pos = activeCell.Value;
+        int x = pos.x;
+        int y = pos.y;
+        int value = gridValues[x, y];
 
-        // 縦合体（最優先・必ず下）
-        if (y > 0 && board[x, y - 1] == v)
+        // ▼ 縦合体（必ず下）
+        if (y > 0 && gridValues[x, y - 1] == value)
         {
-            MergeDown(x, y);
+            MergeToDown(x, y);
             return true;
         }
 
-        // 横合体（主役優先・左→右）
-        if (x > 0 && board[x - 1, y] == v)
+        // ▼ 横合体（主役セルに吸収）
+        if (x > 0 && gridValues[x - 1, y] == value)
         {
-            MergeHorizontalHero(x, y, x - 1, y);
+            MergeToActive(x, y, x - 1, y);
             return true;
         }
-        if (x < width - 1 && board[x + 1, y] == v)
+        if (x < width - 1 && gridValues[x + 1, y] == value)
         {
-            MergeHorizontalHero(x, y, x + 1, y);
+            MergeToActive(x, y, x + 1, y);
             return true;
         }
 
         return false;
     }
 
-    // =====================
-    // 合体処理
-    // =====================
-
-    // 縦合体：必ず下に合体
-    void MergeDown(int x, int y)
+    /// <summary>
+    /// 合体処理(縦)
+    /// </summary>
+    void MergeToDown(int x, int y)
     {
-        board[x, y - 1] *= 2;
-        board[x, y] = 0;
+        // 数値処理
+        gridValues[x, y - 1] *= 2;
+        gridValues[x, y] = 0;
 
-        var main = cellMap[x, y - 1];
-        var dead = cellMap[x, y];
+        // 見た目処理
+        var main = cells[x, y - 1]; // 残るセル
+        var dead = cells[x, y];     // 消えるセル
 
-        if (main != null)
-        {
-            main.SetValue(board[x, y - 1]);
-            main.PlayMergeEffect();
-        }
+        main?.SetValue(gridValues[x, y - 1]);
+        main?.PlayMergeEffect();
 
         if (dead != null)
         {
             Destroy(dead.gameObject);
-            cellMap[x, y] = null;
+            cells[x, y] = null;
         }
 
-        hero = new Vector2Int(x, y - 1);
+        // 新しい主役セル
+        activeCell = new Vector2Int(x, y - 1);
     }
 
-    // 横合体：主役セルに合体
-    void MergeHorizontalHero(int hx, int hy, int dx, int dy)
+    /// <summary>
+    /// 合体処理(横)
+    /// </summary>
+    void MergeToActive(int ax, int ay, int bx, int by)
     {
-        board[hx, hy] *= 2;
-        board[dx, dy] = 0;
+        gridValues[ax, ay] *= 2;
+        gridValues[bx, by] = 0;
 
-        var main = cellMap[hx, hy];
-        var dead = cellMap[dx, dy];
+        var main = cells[ax, ay];
+        var dead = cells[bx, by];
 
-        if (main != null)
-        {
-            main.SetValue(board[hx, hy]);
-            main.PlayMergeEffect();
-        }
+        main?.SetValue(gridValues[ax, ay]);
+        main?.PlayMergeEffect();
 
         if (dead != null)
         {
             Destroy(dead.gameObject);
-            cellMap[dx, dy] = null;
+            cells[bx, by] = null;
         }
 
-        hero = new Vector2Int(hx, hy);
+        activeCell = new Vector2Int(ax, ay);
     }
 
-    // =====================
-    // 重力処理
-    // =====================
-
-    void ApplyGravity()
+    /// <summary>
+    /// 重力処理
+    /// </summary>
+    void ApplyFall()
     {
         bool moved;
+
+        // 落とせなくなるまで繰り返す
         do
         {
             moved = false;
@@ -156,18 +159,21 @@ public class BoardManager : MonoBehaviour
             {
                 for (int y = 1; y < height; y++)
                 {
-                    if (board[x, y] != 0 && board[x, y - 1] == 0)
+                    // 上にセルがあり、下が空いている
+                    if (gridValues[x, y] != 0 && gridValues[x, y - 1] == 0)
                     {
-                        board[x, y - 1] = board[x, y];
-                        board[x, y] = 0;
+                        // 数値移動
+                        gridValues[x, y - 1] = gridValues[x, y];
+                        gridValues[x, y] = 0;
 
-                        var cell = cellMap[x, y];
-                        cellMap[x, y - 1] = cell;
-                        cellMap[x, y] = null;
+                        // 見た目移動
+                        var cell = cells[x, y];
+                        cells[x, y - 1] = cell;
+                        cells[x, y] = null;
 
                         cell?.MoveTo(
                             new Vector3(x * cellSize, (y - 1) * cellSize, 0),
-                            fallDuration
+                            fallTime
                         );
 
                         moved = true;
@@ -178,54 +184,55 @@ public class BoardManager : MonoBehaviour
         while (moved);
     }
 
-    // =====================
-    // 重力後の主役探索
-    // =====================
-
-    Vector2Int? FindNextHeroAfterGravity()
+    /// <summary>
+    /// 次の合体可能セルを探索
+    /// </summary>
+    /// <returns></returns>
+    Vector2Int? FindNextActiveCell()
     {
-        // 左→右、下→上
+        // 左→右、下→上で探索
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
-                int v = board[x, y];
-                if (v == 0) continue;
+                int value = gridValues[x, y];
+                if (value == 0) continue;
 
                 // 縦
-                if (y > 0 && board[x, y - 1] == v)
+                if (y > 0 && gridValues[x, y - 1] == value)
                     return new Vector2Int(x, y);
 
                 // 横
-                if (x > 0 && board[x - 1, y] == v)
+                if (x > 0 && gridValues[x - 1, y] == value)
                     return new Vector2Int(x, y);
-                if (x < width - 1 && board[x + 1, y] == v)
+                if (x < width - 1 && gridValues[x + 1, y] == value)
                     return new Vector2Int(x, y);
             }
         }
         return null;
     }
 
-    // =====================
-    // セル生成
-    // =====================
-
-    Vector2Int? DropNumber(int x, int value)
+    /// <summary>
+    /// セルを生成
+    /// </summary>
+    Vector2Int? SpawnCell(int x, int value)
     {
+        // 下から順に空きを探す
         for (int y = 0; y < height; y++)
         {
-            if (board[x, y] == 0)
-            {
-                board[x, y] = value;
+            if (gridValues[x, y] != 0) continue;
 
-                var obj = Instantiate(cellPrefab);
-                obj.transform.position = new Vector3(x * cellSize, y * cellSize, 0);
-                var cell = obj.GetComponent<CellView>();
-                cell.SetValue(value);
+            gridValues[x, y] = value;
 
-                cellMap[x, y] = cell;
-                return new Vector2Int(x, y);
-            }
+            var obj = Instantiate(cellPrefab);
+            obj.transform.position =
+                new Vector3(x * cellSize, y * cellSize, 0);
+
+            var cell = obj.GetComponent<CellView>();
+            cell.SetValue(value);
+
+            cells[x, y] = cell;
+            return new Vector2Int(x, y);
         }
         return null;
     }
