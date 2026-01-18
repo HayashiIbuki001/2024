@@ -27,6 +27,7 @@ public class BoardManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Alpha2)) DropByPlayer(1);
         if (Input.GetKeyDown(KeyCode.Alpha3)) DropByPlayer(2);
         if (Input.GetKeyDown(KeyCode.Alpha4)) DropByPlayer(3);
+        if (Input.GetKeyDown(KeyCode.Alpha5)) DropByPlayer(4);
     }
 
     /// <summary>
@@ -36,10 +37,30 @@ public class BoardManager : MonoBehaviour
     void DropByPlayer(int x)
     {
         // セル生成 → アクティブセルに設定
-        activeCell = SpawnCell(x, 2);
+        activeCell = SpawnCell(x, GetDropValue());
 
         // 盤面の合体・落下を解決
         ResolveChain();
+
+        // 見た目を最終状態に合わせる
+        RefreshView();
+    }
+
+    int GetDropValue()
+    {
+        int r = Random.Range(1, 101);
+        int sum = 0;
+
+        int[] values = { 2, 4, 8, 16 };   // 落とす数字
+        int[] rates = { 60, 25, 10, 5 }; // それぞれの確率
+
+        for (int i = 0; i < values.Length; i++)
+        {
+            sum += rates[i];
+            if (r <= sum)
+                return values[i];
+        }
+        return 2;
     }
 
     /// <summary>
@@ -53,7 +74,7 @@ public class BoardManager : MonoBehaviour
             // 合体できるだけ合体
             while (TryMergeActiveCell()) { }
 
-            // 重力適用
+            // 重力適用（ロジックのみ）
             ApplyFall();
 
             // 次に合体できるセルを探す
@@ -64,7 +85,6 @@ public class BoardManager : MonoBehaviour
     /// <summary>
     /// 合体判定
     /// </summary>
-    /// <returns></returns>
     bool TryMergeActiveCell()
     {
         var pos = activeCell.Value;
@@ -144,7 +164,7 @@ public class BoardManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 重力処理
+    /// 重力処理（ロジック専用）
     /// </summary>
     void ApplyFall()
     {
@@ -166,15 +186,9 @@ public class BoardManager : MonoBehaviour
                         gridValues[x, y - 1] = gridValues[x, y];
                         gridValues[x, y] = 0;
 
-                        // 見た目移動
-                        var cell = cells[x, y];
-                        cells[x, y - 1] = cell;
+                        // 参照移動
+                        cells[x, y - 1] = cells[x, y];
                         cells[x, y] = null;
-
-                        cell?.MoveTo(
-                            new Vector3(x * cellSize, (y - 1) * cellSize, 0),
-                            fallTime
-                        );
 
                         moved = true;
                     }
@@ -185,9 +199,25 @@ public class BoardManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 見た目を盤面に同期
+    /// </summary>
+    void RefreshView()
+    {
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                cells[x, y]?.MoveTo(
+                    new Vector3(x * cellSize, y * cellSize, 0),
+                    fallTime
+                );
+            }
+        }
+    }
+
+    /// <summary>
     /// 次の合体可能セルを探索
     /// </summary>
-    /// <returns></returns>
     Vector2Int? FindNextActiveCell()
     {
         // 左→右、下→上で探索
