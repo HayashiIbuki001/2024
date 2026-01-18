@@ -14,20 +14,49 @@ public class BoardManager : MonoBehaviour
     CellView[,] cells;          // 見た目用セル
 
     Vector2Int? activeCell;     // 今合体判定しているセル
+    private int dropWidthIndex; // 落とすときの縦のマス
+
+    // ===== 予告セル =====
+    CellView previewCell;
+    int previewValue;
 
     void Start()
     {
         gridValues = new int[width, height];
         cells = new CellView[width, height];
+
+        // 予告セル生成
+        previewValue = GetDropValue();
+        var obj = Instantiate(cellPrefab);
+        previewCell = obj.GetComponent<CellView>();
+        previewCell.SetValue(previewValue);
+
+        UpdatePreviewPosition();
     }
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Alpha1)) DropByPlayer(0);
-        if (Input.GetKeyDown(KeyCode.Alpha2)) DropByPlayer(1);
-        if (Input.GetKeyDown(KeyCode.Alpha3)) DropByPlayer(2);
-        if (Input.GetKeyDown(KeyCode.Alpha4)) DropByPlayer(3);
-        if (Input.GetKeyDown(KeyCode.Alpha5)) DropByPlayer(4);
+        if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            dropWidthIndex = (dropWidthIndex - 1 + width) % width;
+            UpdatePreviewPosition();
+        }
+
+        if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            dropWidthIndex = (dropWidthIndex + 1) % width;
+            UpdatePreviewPosition();
+        }
+
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            DropByPlayer(dropWidthIndex);
+
+            // 次の予告セル更新
+            previewValue = GetDropValue();
+            previewCell.SetValue(previewValue);
+            UpdatePreviewPosition();
+        }
     }
 
     /// <summary>
@@ -37,7 +66,7 @@ public class BoardManager : MonoBehaviour
     void DropByPlayer(int x)
     {
         // セル生成 → アクティブセルに設定
-        activeCell = SpawnCell(x, GetDropValue());
+        activeCell = SpawnCell(x, previewValue);
 
         // 盤面の合体・落下を解決
         ResolveChain();
@@ -265,5 +294,16 @@ public class BoardManager : MonoBehaviour
             return new Vector2Int(x, y);
         }
         return null;
+    }
+
+    // ===== 予告セル位置更新 =====
+    void UpdatePreviewPosition()
+    {
+        previewCell.transform.position =
+            new Vector3(
+                dropWidthIndex * cellSize,
+                height * cellSize + 0.5f,
+                0
+            );
     }
 }
