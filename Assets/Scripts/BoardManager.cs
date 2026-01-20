@@ -1,5 +1,6 @@
 using DG.Tweening;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class BoardManager : MonoBehaviour
 {
@@ -23,6 +24,13 @@ public class BoardManager : MonoBehaviour
     // ===== 予告セル =====
     CellView previewCell;
     int previewValue;
+
+    private bool isGameOver;
+
+    // ===== ゲージ =====
+    private float destroyGauge = 0f;
+    private const float gaugeStep = 33.3f;
+    [SerializeField] private Slider gaugeSlider;
 
     void Start()
     {
@@ -55,12 +63,27 @@ public class BoardManager : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            DropByPlayer(dropWidthIndex);
+            if (DropByPlayer(dropWidthIndex))
+            {
 
-            // 次の予告セル更新
-            previewValue = GetDropValue();
-            previewCell.SetValue(previewValue);
-            UpdatePreviewPosition();
+                // 次の予告セル更新
+                previewValue = GetDropValue();
+                previewCell.SetValue(previewValue);
+                UpdatePreviewPosition();
+            }
+        }
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            Vector2 worldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            int x = Mathf.FloorToInt(worldPos.x / cellSize);
+            int y = Mathf.FloorToInt(worldPos.y / cellSize);
+
+            if (x >= 0 && x < width && y >= 0 && y < height)
+            {
+                TryDestroyBlock(x, y);
+                UpdateGaugeUI();
+            }
         }
     }
 
@@ -81,16 +104,21 @@ public class BoardManager : MonoBehaviour
     /// プレイヤー操作
     /// </summary>
     /// <param name="x">落下する行</param>
-    void DropByPlayer(int x)
+    private bool DropByPlayer(int x)
     {
         // セル生成 → アクティブセルに設定
         activeCell = SpawnCell(x, previewValue);
+        if (!activeCell.HasValue) return false;
 
         // 盤面の合体・落下を解決
         ResolveChain();
 
         // 見た目を最終状態に合わせる
         RefreshView();
+
+        CheckGameOver();
+
+        return true;
     }
 
     int GetDropValue()
@@ -187,6 +215,9 @@ public class BoardManager : MonoBehaviour
         main?.SetValue(gridValues[x, y - 1]);
         main?.PlayMergeEffect();
 
+        OnCellMerged();
+        UpdateGaugeUI();
+
         // 新しい主役
         activeCell = new Vector2Int(x, y - 1);
     }
@@ -215,6 +246,9 @@ public class BoardManager : MonoBehaviour
 
         main?.SetValue(gridValues[ax, ay]);
         main?.PlayMergeEffect();
+
+        OnCellMerged();
+        UpdateGaugeUI();
 
         activeCell = new Vector2Int(ax, ay);
     }
@@ -319,6 +353,9 @@ public class BoardManager : MonoBehaviour
             cell.SetValue(value);
 
             cells[x, y] = cell;
+
+            OnCellDropped();
+            UpdateGaugeUI();
             return new Vector2Int(x, y);
         }
         return null;
@@ -333,5 +370,82 @@ public class BoardManager : MonoBehaviour
                 height * cellSize + 0.5f,
                 0
             );
+    }
+
+    private void AddGauge(float amount)
+    {
+        destroyGauge = Mathf.Min(destroyGauge + amount, 100f);
+    }
+
+    public void TryDestroyBlock(int x, int y)
+    {
+        if (destroyGauge < gaugeStep) return;
+
+        destroyGauge -= gaugeStep;
+        DestroyBlock(x, y);
+    }
+
+    private void DestroyBlock(int x, int y)
+    {
+        gridValues[x, y] = 0;
+        if (cells[x, y] != null)
+        {
+            Destroy(cells[x, y].gameObject);
+            cells[x, y] = null;
+        }
+
+        ApplyFall(); // 落下処理
+        ResolveChain(); // 合体処理
+        RefreshView(); // 見た目
+    }
+
+    private void UpdateGaugeUI()
+    {
+        if (gaugeSlider != null)
+        {
+            gaugeSlider.value = destroyGauge;
+        }
+    }
+
+    void OnCellDropped()
+    {
+        AddGauge(1f);
+    }
+
+    void OnCellMerged()
+    {
+        AddGauge(3f);
+    }
+
+    private bool IsBoardFull()
+    {
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (gridValues[x, y] == 0)
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private void CheckGameOver()
+    {
+        if (IsBoardFull() && FindNextActiveCell() == null)
+        {
+            GameOver();
+        }
+    }
+    private void GameOver()
+    {
+        if (isGameOver) return;
+
+        // ゲームオーバー処理
+        isGameOver = true;
+        Debug.Log("ゲームオーバー");
     }
 }
