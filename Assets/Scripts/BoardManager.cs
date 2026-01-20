@@ -1,13 +1,17 @@
+using DG.Tweening;
 using UnityEngine;
 
 public class BoardManager : MonoBehaviour
 {
     // ===== 設定 =====
     [SerializeField] GameObject cellPrefab;
-    [SerializeField] float cellSize = 1.1f;
-    [SerializeField] float fallTime = 0.15f;
-    [SerializeField] int width = 4;
-    [SerializeField] int height = 4;
+    [SerializeField] GameObject BGCellPrefab;
+    [SerializeField] public float cellSize = 1.1f;
+    //[SerializeField] float fallTime = 0.15f;
+    [SerializeField] public int width = 4;
+    [SerializeField] public int height = 4;
+    [SerializeField] CellAnimator cellAnimator;
+
 
     // ===== 盤面データ =====
     int[,] gridValues;          // 数値だけの盤面
@@ -24,6 +28,7 @@ public class BoardManager : MonoBehaviour
     {
         gridValues = new int[width, height];
         cells = new CellView[width, height];
+        BackgroundCreate();
 
         // 予告セル生成
         previewValue = GetDropValue();
@@ -56,6 +61,19 @@ public class BoardManager : MonoBehaviour
             previewValue = GetDropValue();
             previewCell.SetValue(previewValue);
             UpdatePreviewPosition();
+        }
+    }
+
+    private void BackgroundCreate()
+    {
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                var pos = new Vector3(x * cellSize, y * cellSize, 0);
+                var cell = Instantiate(BGCellPrefab, pos, Quaternion.identity);
+
+            }
         }
     }
 
@@ -152,22 +170,27 @@ public class BoardManager : MonoBehaviour
         gridValues[x, y - 1] *= 2;
         gridValues[x, y] = 0;
 
-        // 見た目処理
-        var main = cells[x, y - 1]; // 残るセル
-        var dead = cells[x, y];     // 消えるセル
+        // 見た目
+        var main = cells[x, y - 1]; // 残る
+        var dead = cells[x, y];     // 消える
+
+        if (dead != null && main != null)
+        {
+            // ★ 瞬間移動防止：一瞬だけ寄せる
+            dead.transform.DOKill();
+            dead.transform.DOMove(main.transform.position, 0.06f);
+            Destroy(dead.gameObject, 0.06f);
+        }
+
+        cells[x, y] = null;
 
         main?.SetValue(gridValues[x, y - 1]);
         main?.PlayMergeEffect();
 
-        if (dead != null)
-        {
-            Destroy(dead.gameObject);
-            cells[x, y] = null;
-        }
-
-        // 新しい主役セル
+        // 新しい主役
         activeCell = new Vector2Int(x, y - 1);
     }
+
 
     /// <summary>
     /// 合体処理(横)
@@ -180,17 +203,22 @@ public class BoardManager : MonoBehaviour
         var main = cells[ax, ay];
         var dead = cells[bx, by];
 
+        if (dead != null && main != null)
+        {
+            // ★ 瞬間移動防止：一瞬だけ寄せる
+            dead.transform.DOKill();
+            dead.transform.DOMove(main.transform.position, 0.06f);
+            Destroy(dead.gameObject, 0.06f);
+        }
+
+        cells[bx, by] = null;
+
         main?.SetValue(gridValues[ax, ay]);
         main?.PlayMergeEffect();
 
-        if (dead != null)
-        {
-            Destroy(dead.gameObject);
-            cells[bx, by] = null;
-        }
-
         activeCell = new Vector2Int(ax, ay);
     }
+
 
     /// <summary>
     /// 重力処理（ロジック専用）
@@ -236,13 +264,13 @@ public class BoardManager : MonoBehaviour
         {
             for (int y = 0; y < height; y++)
             {
-                cells[x, y]?.MoveTo(
-                    new Vector3(x * cellSize, y * cellSize, 0),
-                    fallTime
-                );
+                if (cells[x, y] == null) continue;
+
+                cellAnimator.MoveCell(cells[x, y], x, y);
             }
         }
     }
+
 
     /// <summary>
     /// 次の合体可能セルを探索

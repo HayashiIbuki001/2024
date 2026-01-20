@@ -429,6 +429,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1899007799}
   - component: {fileID: 1899007798}
+  - component: {fileID: 1899007800}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -449,10 +450,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoardManager
   cellPrefab: {fileID: 4150478440360767197, guid: e3c3bcdd0ff19f74586b2ce03374ecc8, type: 3}
+  BGCellPrefab: {fileID: 700464608908695337, guid: 30db523e2b492d04e90a6a94d66d0599, type: 3}
   cellSize: 1.1
-  fallTime: 0.15
   width: 5
   height: 5
+  cellAnimator: {fileID: 1899007800}
 --- !u!4 &1899007799
 Transform:
   m_ObjectHideFlags: 0
@@ -468,6 +470,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1899007800
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1899007797}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44e40dbc92b4c734bbd6484a09a4a379, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CellAnimator
+  cellSize: 1.1
+  moveDuration: 0.15
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -9,7 +9,9 @@ public class CellAnimator : MonoBehaviour
     public void MoveCell(CellView cell, int x, int y)
     {
         Vector3 pos = new Vector3(x * cellSize, y * cellSize, 0f);
+
         cell.transform.DOKill();
-        cell.transform.DOMove(pos, moveDuration).SetEase(Ease.OutCubic);
+        cell.transform.DOMove(pos, moveDuration)
+            .SetEase(Ease.OutCubic);
     }
 }
