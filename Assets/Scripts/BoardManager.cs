@@ -1,6 +1,7 @@
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class BoardManager : MonoBehaviour
 {
@@ -32,8 +33,20 @@ public class BoardManager : MonoBehaviour
     private const float gaugeStep = 33.3f;
     [SerializeField] private Slider gaugeSlider;
 
+    Vector2Int cursor = Vector2Int.zero;
+    [SerializeField] GameObject cursorView;
+
+    private bool isDestroyMode = false;
+
+    [SerializeField] public TextMeshProUGUI scoreText;
+    private int totalScore = 0;
+
     void Start()
     {
+        gaugeSlider.maxValue = 100f;
+        totalScore = 0;
+        scoreText.text = totalScore.ToString("N0");
+
         gridValues = new int[width, height];
         cells = new CellView[width, height];
         BackgroundCreate();
@@ -44,44 +57,55 @@ public class BoardManager : MonoBehaviour
         previewCell = obj.GetComponent<CellView>();
         previewCell.SetValue(previewValue);
 
+        cursor = new Vector2Int(0, 0);
+        UpdateCursorView();
         UpdatePreviewPosition();
     }
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))
+        if (!isDestroyMode)
         {
-            dropWidthIndex = (dropWidthIndex - 1 + width) % width;
-            UpdatePreviewPosition();
-        }
-
-        if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
-        {
-            dropWidthIndex = (dropWidthIndex + 1) % width;
-            UpdatePreviewPosition();
-        }
-
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            if (DropByPlayer(dropWidthIndex))
+            if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))
             {
-
-                // ŽŸ‚Ì—\ƒZƒ‹XV
-                previewValue = GetDropValue();
-                previewCell.SetValue(previewValue);
+                dropWidthIndex = (dropWidthIndex - 1 + width) % width;
                 UpdatePreviewPosition();
+            }
+
+            if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
+            {
+                dropWidthIndex = (dropWidthIndex + 1) % width;
+                UpdatePreviewPosition();
+            }
+
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                if (DropByPlayer(dropWidthIndex))
+                {
+
+                    // ŽŸ‚Ì—\ƒZƒ‹XV
+                    previewValue = GetDropValue();
+                    previewCell.SetValue(previewValue);
+                    UpdatePreviewPosition();
+                }
             }
         }
 
-        if (Input.GetMouseButtonDown(0))
+        if (isDestroyMode)
         {
-            Vector2 worldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            int x = Mathf.FloorToInt(worldPos.x / cellSize);
-            int y = Mathf.FloorToInt(worldPos.y / cellSize);
+            if (Input.GetKeyDown(KeyCode.A)) cursor.x--;
+            if (Input.GetKeyDown(KeyCode.D)) cursor.x++;
+            if (Input.GetKeyDown(KeyCode.S)) cursor.y--;
+            if (Input.GetKeyDown(KeyCode.W)) cursor.y++;
 
-            if (x >= 0 && x < width && y >= 0 && y < height)
+            cursor.x = Mathf.Clamp(cursor.x, 0, width - 1);
+            cursor.y = Mathf.Clamp(cursor.y, 0, height - 1);
+
+            UpdateCursorView();
+
+            if (Input.GetKeyDown(KeyCode.Space))
             {
-                TryDestroyBlock(x, y);
+                TryDestroyBlock(cursor.x, cursor.y);
                 UpdateGaugeUI();
             }
         }
@@ -215,6 +239,8 @@ public class BoardManager : MonoBehaviour
         main?.SetValue(gridValues[x, y - 1]);
         main?.PlayMergeEffect();
 
+        AddScore(gridValues[x, y - 1]);
+
         OnCellMerged();
         UpdateGaugeUI();
 
@@ -236,7 +262,6 @@ public class BoardManager : MonoBehaviour
 
         if (dead != null && main != null)
         {
-            // š uŠÔˆÚ“®–hŽ~Fˆêu‚¾‚¯Šñ‚¹‚é
             dead.transform.DOKill();
             dead.transform.DOMove(main.transform.position, 0.06f);
             Destroy(dead.gameObject, 0.06f);
@@ -246,6 +271,8 @@ public class BoardManager : MonoBehaviour
 
         main?.SetValue(gridValues[ax, ay]);
         main?.PlayMergeEffect();
+
+        AddScore(gridValues[ax, ay]);
 
         OnCellMerged();
         UpdateGaugeUI();
@@ -354,7 +381,6 @@ public class BoardManager : MonoBehaviour
 
             cells[x, y] = cell;
 
-            OnCellDropped();
             UpdateGaugeUI();
             return new Vector2Int(x, y);
         }
@@ -379,14 +405,24 @@ public class BoardManager : MonoBehaviour
 
     public void TryDestroyBlock(int x, int y)
     {
+        int value = gridValues[x, y];
+        if (value ==  0) return;
+
+        int n = (int)Mathf.Log(value, 2); // lvlŒvŽZ
+        if (n < 5) return;
+
         if (destroyGauge < gaugeStep) return;
 
         destroyGauge -= gaugeStep;
+        AddScore(value * n);
+
         DestroyBlock(x, y);
+        UpdateGaugeUI();
     }
 
     private void DestroyBlock(int x, int y)
     {
+
         gridValues[x, y] = 0;
         if (cells[x, y] != null)
         {
@@ -399,6 +435,28 @@ public class BoardManager : MonoBehaviour
         RefreshView(); // Œ©‚½–Ú
     }
 
+    public void OnClickDestroyButton()
+    {
+        isDestroyMode = !isDestroyMode;
+        Debug.Log($"”j‰óƒ‚[ƒhF{isDestroyMode}");
+
+        if (isDestroyMode)
+        {
+            cursorView.SetActive(true);
+        }
+        else
+        {
+            cursorView.SetActive(false);
+        }
+    }
+
+    private void UpdateCursorView()
+    {
+        if (cursorView == null) return;
+
+        cursorView.transform.position = new Vector3(cursor.x * cellSize, cursor.y * cellSize, -1);
+    }
+
     private void UpdateGaugeUI()
     {
         if (gaugeSlider != null)
@@ -407,14 +465,30 @@ public class BoardManager : MonoBehaviour
         }
     }
 
-    void OnCellDropped()
-    {
-        AddGauge(1f);
-    }
-
     void OnCellMerged()
     {
-        AddGauge(3f);
+        if (!activeCell.HasValue) return;
+        
+        int value = gridValues[activeCell.Value.x, activeCell.Value.y];
+        AddGaugeByLevel(value);
+    }
+
+    private void AddGaugeByLevel(int value)
+    {
+        int lv = (int)Mathf.Log(value, 2);
+        float increase = (lv * lv) / 4f;
+
+        destroyGauge = Mathf.Min(destroyGauge + increase, 100f);
+        UpdateGaugeUI();
+    }
+
+    private void AddScore(int value)
+    {
+        if (value <= 0) return;
+
+        const int maxScore = 1_000_000_000;
+        totalScore = Mathf.Min(totalScore + value, maxScore);
+        scoreText.text = totalScore.ToString("N0");
     }
 
     private bool IsBoardFull()
