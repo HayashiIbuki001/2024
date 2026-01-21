@@ -14,6 +14,10 @@ public class BoardManager : MonoBehaviour
     [SerializeField] public int height = 4;
     [SerializeField] CellAnimator cellAnimator;
 
+    [SerializeField] private RectTransform tick33;
+    [SerializeField] private RectTransform tick66;
+    [SerializeField] private RectTransform fillArea;
+
 
     // ===== 盤面データ =====
     int[,] gridValues;          // 数値だけの盤面
@@ -60,6 +64,7 @@ public class BoardManager : MonoBehaviour
         cursor = new Vector2Int(0, 0);
         UpdateCursorView();
         UpdatePreviewPosition();
+        UpdateTicksPosition();
     }
 
     void Update()
@@ -462,7 +467,33 @@ public class BoardManager : MonoBehaviour
         if (gaugeSlider != null)
         {
             gaugeSlider.value = destroyGauge;
+
+            Image fill = gaugeSlider.fillRect.GetComponent<Image>();
+
+            Color brightYellowGreen = new Color(0.5f, 1f, 0f);
+
+            if (destroyGauge < gaugeStep)
+                fill.color = Color.gray; // 破壊不可
+            else if (destroyGauge < gaugeStep * 2)
+                fill.color = brightYellowGreen; // 破壊1回可能
+            else if (destroyGauge < gaugeStep * 3)
+                fill.color = Color.yellow; // 破壊2回可能
+            else
+                fill.color = Color.orange; // 99.9f ~ max
         }
+
+        UpdateTicksPosition();
+    }
+
+    private void UpdateTicksPosition()
+    {
+        float width = fillArea.rect.width;
+
+        // 33% の位置
+        tick33.anchoredPosition = new Vector2(width * 0.333f, tick33.anchoredPosition.y);
+
+        // 66% の位置
+        tick66.anchoredPosition = new Vector2(width * 0.666f, tick66.anchoredPosition.y);
     }
 
     void OnCellMerged()
