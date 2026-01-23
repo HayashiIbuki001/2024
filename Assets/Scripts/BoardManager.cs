@@ -436,6 +436,7 @@ public class BoardManager : MonoBehaviour
         }
 
         ApplyFall(); // —‰ºˆ—
+        activeCell = FindNextActiveCell();
         ResolveChain(); // ‡‘Ìˆ—
         RefreshView(); // Œ©‚½–Ú
     }
