@@ -1,15 +1,16 @@
-using DG.Tweening;
+ï»¿using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections.Generic;
 
 public class BoardManager : MonoBehaviour
 {
-    // ===== İ’è =====
+    // ===== è¨­å®š =====
     [SerializeField] GameObject cellPrefab;
     [SerializeField] GameObject BGCellPrefab;
     [SerializeField] public float cellSize = 1.1f;
-    //[SerializeField] float fallTime = 0.15f;
+    
     [SerializeField] public int width = 4;
     [SerializeField] public int height = 4;
     [SerializeField] CellAnimator cellAnimator;
@@ -18,21 +19,24 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private RectTransform tick66;
     [SerializeField] private RectTransform fillArea;
 
+    [SerializeField] private GameObject scorePopUpPrefab;
+    [SerializeField] private RectTransform scorePopUpRoot;
 
-    // ===== ”Õ–Êƒf[ƒ^ =====
-    int[,] gridValues;          // ”’l‚¾‚¯‚Ì”Õ–Ê
-    CellView[,] cells;          // Œ©‚½–Ú—pƒZƒ‹
 
-    Vector2Int? activeCell;     // ¡‡‘Ì”»’è‚µ‚Ä‚¢‚éƒZƒ‹
-    private int dropWidthIndex; // —‚Æ‚·‚Æ‚«‚Ìc‚Ìƒ}ƒX
+    // ===== ç›¤é¢ãƒ‡ãƒ¼ã‚¿ =====
+    int[,] gridValues;          // æ•°å€¤ã ã‘ã®ç›¤é¢
+    CellView[,] cells;          // è¦‹ãŸç›®ç”¨ã‚»ãƒ«
 
-    // ===== —\ƒZƒ‹ =====
+    Vector2Int? activeCell;     // ä»Šåˆä½“åˆ¤å®šã—ã¦ã„ã‚‹ã‚»ãƒ«
+    private int dropWidthIndex; // è½ã¨ã™ã¨ãã®ç¸¦ã®ãƒã‚¹
+
+    // ===== äºˆå‘Šã‚»ãƒ« =====
     CellView previewCell;
     int previewValue;
 
     private bool isGameOver;
 
-    // ===== ƒQ[ƒW =====
+    // ===== ã‚²ãƒ¼ã‚¸ =====
     private float destroyGauge = 0f;
     private const float gaugeStep = 33.3f;
     [SerializeField] private Slider gaugeSlider;
@@ -44,6 +48,9 @@ public class BoardManager : MonoBehaviour
 
     [SerializeField] public TextMeshProUGUI scoreText;
     private int totalScore = 0;
+    private int chainScore = 0;
+    Queue<string> scoreQueue = new Queue<string>();
+    bool isScorePopupPlaying;
 
     void Start()
     {
@@ -55,7 +62,7 @@ public class BoardManager : MonoBehaviour
         cells = new CellView[width, height];
         BackgroundCreate();
 
-        // —\ƒZƒ‹¶¬
+        // äºˆå‘Šã‚»ãƒ«ç”Ÿæˆ
         previewValue = GetDropValue();
         var obj = Instantiate(cellPrefab);
         previewCell = obj.GetComponent<CellView>();
@@ -88,7 +95,7 @@ public class BoardManager : MonoBehaviour
                 if (DropByPlayer(dropWidthIndex))
                 {
 
-                    // Ÿ‚Ì—\ƒZƒ‹XV
+                    // æ¬¡ã®äºˆå‘Šã‚»ãƒ«æ›´æ–°
                     previewValue = GetDropValue();
                     previewCell.SetValue(previewValue);
                     UpdatePreviewPosition();
@@ -130,19 +137,19 @@ public class BoardManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ƒvƒŒƒCƒ„[‘€ì
+    /// ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼æ“ä½œ
     /// </summary>
-    /// <param name="x">—‰º‚·‚és</param>
+    /// <param name="x">è½ä¸‹ã™ã‚‹è¡Œ</param>
     private bool DropByPlayer(int x)
     {
-        // ƒZƒ‹¶¬ ¨ ƒAƒNƒeƒBƒuƒZƒ‹‚Éİ’è
+        // ã‚»ãƒ«ç”Ÿæˆ â†’ ã‚¢ã‚¯ãƒ†ã‚£ãƒ–ã‚»ãƒ«ã«è¨­å®š
         activeCell = SpawnCell(x, previewValue);
         if (!activeCell.HasValue) return false;
 
-        // ”Õ–Ê‚Ì‡‘ÌE—‰º‚ğ‰ğŒˆ
+        // ç›¤é¢ã®åˆä½“ãƒ»è½ä¸‹ã‚’è§£æ±º
         ResolveChain();
 
-        // Œ©‚½–Ú‚ğÅIó‘Ô‚É‡‚í‚¹‚é
+        // è¦‹ãŸç›®ã‚’æœ€çµ‚çŠ¶æ…‹ã«åˆã‚ã›ã‚‹
         RefreshView();
 
         CheckGameOver();
@@ -155,8 +162,8 @@ public class BoardManager : MonoBehaviour
         int r = Random.Range(1, 101);
         int sum = 0;
 
-        int[] values = { 2, 4, 8, 16 };   // —‚Æ‚·”š
-        int[] rates = { 60, 25, 10, 5 }; // ‚»‚ê‚¼‚ê‚ÌŠm—¦
+        int[] values = { 2, 4, 8, 16 };   // è½ã¨ã™æ•°å­—
+        int[] rates = { 60, 25, 10, 5 }; // ãã‚Œãã‚Œã®ç¢ºç‡
 
         for (int i = 0; i < values.Length; i++)
         {
@@ -168,26 +175,33 @@ public class BoardManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ”Õ–Êˆ—
+    /// ç›¤é¢å‡¦ç†
     /// </summary>
     void ResolveChain()
     {
-        // ‡‘Ì‚Å‚«‚éƒZƒ‹‚ª‚ ‚éŒÀ‚è‘±‚¯‚é
+        chainScore = 0;
+
+        // åˆä½“ã§ãã‚‹ã‚»ãƒ«ãŒã‚ã‚‹é™ã‚Šç¶šã‘ã‚‹
         while (activeCell.HasValue)
         {
-            // ‡‘Ì‚Å‚«‚é‚¾‚¯‡‘Ì
+            // åˆä½“ã§ãã‚‹ã ã‘åˆä½“
             while (TryMergeActiveCell()) { }
 
-            // d—Í“K—piƒƒWƒbƒN‚Ì‚İj
+            // é‡åŠ›é©ç”¨ï¼ˆãƒ­ã‚¸ãƒƒã‚¯ã®ã¿ï¼‰
             ApplyFall();
 
-            // Ÿ‚É‡‘Ì‚Å‚«‚éƒZƒ‹‚ğ’T‚·
+            // æ¬¡ã«åˆä½“ã§ãã‚‹ã‚»ãƒ«ã‚’æ¢ã™
             activeCell = FindNextActiveCell();
+        }
+
+        if (chainScore > 0)
+        {
+            AddScore(chainScore);
         }
     }
 
     /// <summary>
-    /// ‡‘Ì”»’è
+    /// åˆä½“åˆ¤å®š
     /// </summary>
     bool TryMergeActiveCell()
     {
@@ -196,14 +210,14 @@ public class BoardManager : MonoBehaviour
         int y = pos.y;
         int value = gridValues[x, y];
 
-        // ¥ c‡‘Ìi•K‚¸‰ºj
+        // â–¼ ç¸¦åˆä½“ï¼ˆå¿…ãšä¸‹ï¼‰
         if (y > 0 && gridValues[x, y - 1] == value)
         {
             MergeToDown(x, y);
             return true;
         }
 
-        // ¥ ‰¡‡‘Ìiå–ğƒZƒ‹‚É‹zûj
+        // â–¼ æ¨ªåˆä½“ï¼ˆä¸»å½¹ã‚»ãƒ«ã«å¸åï¼‰
         if (x > 0 && gridValues[x - 1, y] == value)
         {
             MergeToActive(x, y, x - 1, y);
@@ -219,21 +233,21 @@ public class BoardManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ‡‘Ìˆ—(c)
+    /// åˆä½“å‡¦ç†(ç¸¦)
     /// </summary>
     void MergeToDown(int x, int y)
     {
-        // ”’lˆ—
+        // æ•°å€¤å‡¦ç†
         gridValues[x, y - 1] *= 2;
         gridValues[x, y] = 0;
 
-        // Œ©‚½–Ú
-        var main = cells[x, y - 1]; // c‚é
-        var dead = cells[x, y];     // Á‚¦‚é
+        // è¦‹ãŸç›®
+        var main = cells[x, y - 1]; // æ®‹ã‚‹
+        var dead = cells[x, y];     // æ¶ˆãˆã‚‹
 
         if (dead != null && main != null)
         {
-            // š uŠÔˆÚ“®–h~Fˆêu‚¾‚¯Šñ‚¹‚é
+            // â˜… ç¬é–“ç§»å‹•é˜²æ­¢ï¼šä¸€ç¬ã ã‘å¯„ã›ã‚‹
             dead.transform.DOKill();
             dead.transform.DOMove(main.transform.position, 0.06f);
             Destroy(dead.gameObject, 0.06f);
@@ -244,18 +258,18 @@ public class BoardManager : MonoBehaviour
         main?.SetValue(gridValues[x, y - 1]);
         main?.PlayMergeEffect();
 
-        AddScore(gridValues[x, y - 1]);
+        chainScore += gridValues[x, y - 1];
 
         OnCellMerged();
         UpdateGaugeUI();
 
-        // V‚µ‚¢å–ğ
+        // æ–°ã—ã„ä¸»å½¹
         activeCell = new Vector2Int(x, y - 1);
     }
 
 
     /// <summary>
-    /// ‡‘Ìˆ—(‰¡)
+    /// åˆä½“å‡¦ç†(æ¨ª)
     /// </summary>
     void MergeToActive(int ax, int ay, int bx, int by)
     {
@@ -277,7 +291,7 @@ public class BoardManager : MonoBehaviour
         main?.SetValue(gridValues[ax, ay]);
         main?.PlayMergeEffect();
 
-        AddScore(gridValues[ax, ay]);
+        chainScore += gridValues[ax, ay];
 
         OnCellMerged();
         UpdateGaugeUI();
@@ -287,13 +301,13 @@ public class BoardManager : MonoBehaviour
 
 
     /// <summary>
-    /// d—Íˆ—iƒƒWƒbƒNê—pj
+    /// é‡åŠ›å‡¦ç†ï¼ˆãƒ­ã‚¸ãƒƒã‚¯å°‚ç”¨ï¼‰
     /// </summary>
     void ApplyFall()
     {
         bool moved;
 
-        // —‚Æ‚¹‚È‚­‚È‚é‚Ü‚ÅŒJ‚è•Ô‚·
+        // è½ã¨ã›ãªããªã‚‹ã¾ã§ç¹°ã‚Šè¿”ã™
         do
         {
             moved = false;
@@ -302,14 +316,14 @@ public class BoardManager : MonoBehaviour
             {
                 for (int y = 1; y < height; y++)
                 {
-                    // ã‚ÉƒZƒ‹‚ª‚ ‚èA‰º‚ª‹ó‚¢‚Ä‚¢‚é
+                    // ä¸Šã«ã‚»ãƒ«ãŒã‚ã‚Šã€ä¸‹ãŒç©ºã„ã¦ã„ã‚‹
                     if (gridValues[x, y] != 0 && gridValues[x, y - 1] == 0)
                     {
-                        // ”’lˆÚ“®
+                        // æ•°å€¤ç§»å‹•
                         gridValues[x, y - 1] = gridValues[x, y];
                         gridValues[x, y] = 0;
 
-                        // QÆˆÚ“®
+                        // å‚ç…§ç§»å‹•
                         cells[x, y - 1] = cells[x, y];
                         cells[x, y] = null;
 
@@ -322,7 +336,7 @@ public class BoardManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Œ©‚½–Ú‚ğ”Õ–Ê‚É“¯Šú
+    /// è¦‹ãŸç›®ã‚’ç›¤é¢ã«åŒæœŸ
     /// </summary>
     void RefreshView()
     {
@@ -339,11 +353,11 @@ public class BoardManager : MonoBehaviour
 
 
     /// <summary>
-    /// Ÿ‚Ì‡‘Ì‰Â”\ƒZƒ‹‚ğ’Tõ
+    /// æ¬¡ã®åˆä½“å¯èƒ½ã‚»ãƒ«ã‚’æ¢ç´¢
     /// </summary>
     Vector2Int? FindNextActiveCell()
     {
-        // ¶¨‰EA‰º¨ã‚Å’Tõ
+        // å·¦â†’å³ã€ä¸‹â†’ä¸Šã§æ¢ç´¢
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
@@ -351,11 +365,11 @@ public class BoardManager : MonoBehaviour
                 int value = gridValues[x, y];
                 if (value == 0) continue;
 
-                // c
+                // ç¸¦
                 if (y > 0 && gridValues[x, y - 1] == value)
                     return new Vector2Int(x, y);
 
-                // ‰¡
+                // æ¨ª
                 if (x > 0 && gridValues[x - 1, y] == value)
                     return new Vector2Int(x, y);
                 if (x < width - 1 && gridValues[x + 1, y] == value)
@@ -366,11 +380,11 @@ public class BoardManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ƒZƒ‹‚ğ¶¬
+    /// ã‚»ãƒ«ã‚’ç”Ÿæˆ
     /// </summary>
     Vector2Int? SpawnCell(int x, int value)
     {
-        // ‰º‚©‚ç‡‚É‹ó‚«‚ğ’T‚·
+        // ä¸‹ã‹ã‚‰é †ã«ç©ºãã‚’æ¢ã™
         for (int y = 0; y < height; y++)
         {
             if (gridValues[x, y] != 0) continue;
@@ -392,7 +406,7 @@ public class BoardManager : MonoBehaviour
         return null;
     }
 
-    // ===== —\ƒZƒ‹ˆÊ’uXV =====
+    // ===== äºˆå‘Šã‚»ãƒ«ä½ç½®æ›´æ–° =====
     void UpdatePreviewPosition()
     {
         previewCell.transform.position =
@@ -411,19 +425,27 @@ public class BoardManager : MonoBehaviour
     public void TryDestroyBlock(int x, int y)
     {
         int value = gridValues[x, y];
-        if (value ==  0) return;
+        if (value == 0) return;
 
-        int n = (int)Mathf.Log(value, 2); // lvlŒvZ
+        int n = (int)Mathf.Log(value, 2); // lvlè¨ˆç®—
         if (n < 5) return;
 
         if (destroyGauge < gaugeStep) return;
 
         destroyGauge -= gaugeStep;
-        AddScore(value * n);
+
+        int total = value * n * n;
+
+        // â˜… äºŒè¡Œè¡¨ç¤º
+        AddScore(
+            total,
+            $"{value:N0} Ã— Lv{n}Â²\n+{total:N0}"
+        );
 
         DestroyBlock(x, y);
         UpdateGaugeUI();
     }
+
 
     private void DestroyBlock(int x, int y)
     {
@@ -435,16 +457,16 @@ public class BoardManager : MonoBehaviour
             cells[x, y] = null;
         }
 
-        ApplyFall(); // —‰ºˆ—
+        ApplyFall(); // è½ä¸‹å‡¦ç†
         activeCell = FindNextActiveCell();
-        ResolveChain(); // ‡‘Ìˆ—
-        RefreshView(); // Œ©‚½–Ú
+        ResolveChain(); // åˆä½“å‡¦ç†
+        RefreshView(); // è¦‹ãŸç›®
     }
 
     public void OnClickDestroyButton()
     {
         isDestroyMode = !isDestroyMode;
-        Debug.Log($"”j‰óƒ‚[ƒhF{isDestroyMode}");
+        Debug.Log($"ç ´å£Šãƒ¢ãƒ¼ãƒ‰ï¼š{isDestroyMode}");
 
         if (isDestroyMode)
         {
@@ -474,11 +496,11 @@ public class BoardManager : MonoBehaviour
             Color brightYellowGreen = new Color(0.5f, 1f, 0f);
 
             if (destroyGauge < gaugeStep)
-                fill.color = Color.gray; // ”j‰ó•s‰Â
+                fill.color = Color.gray; // ç ´å£Šä¸å¯
             else if (destroyGauge < gaugeStep * 2)
-                fill.color = brightYellowGreen; // ”j‰ó1‰ñ‰Â”\
+                fill.color = brightYellowGreen; // ç ´å£Š1å›å¯èƒ½
             else if (destroyGauge < gaugeStep * 3)
-                fill.color = Color.yellow; // ”j‰ó2‰ñ‰Â”\
+                fill.color = Color.yellow; // ç ´å£Š2å›å¯èƒ½
             else
                 fill.color = Color.orange; // 99.9f ~ max
         }
@@ -490,10 +512,10 @@ public class BoardManager : MonoBehaviour
     {
         float width = fillArea.rect.width;
 
-        // 33% ‚ÌˆÊ’u
+        // 33% ã®ä½ç½®
         tick33.anchoredPosition = new Vector2(width * 0.333f, tick33.anchoredPosition.y);
 
-        // 66% ‚ÌˆÊ’u
+        // 66% ã®ä½ç½®
         tick66.anchoredPosition = new Vector2(width * 0.666f, tick66.anchoredPosition.y);
     }
 
@@ -514,14 +536,72 @@ public class BoardManager : MonoBehaviour
         UpdateGaugeUI();
     }
 
-    private void AddScore(int value)
+    private void AddScore(int value, string popupMessage = null)
     {
         if (value <= 0) return;
 
         const int maxScore = 1_000_000_000;
         totalScore = Mathf.Min(totalScore + value, maxScore);
         scoreText.text = totalScore.ToString("N0");
+
+        // è¡¨ç¤ºæ–‡å­—åˆ—ãŒç„¡ã‘ã‚Œã°é€šå¸¸è¡¨ç¤º
+        if (string.IsNullOrEmpty(popupMessage))
+            popupMessage = $"+{value:N0}";
+
+        scoreQueue.Enqueue(popupMessage);
+
+        if (!isScorePopupPlaying)
+        {
+            PlayNextPupup();
+        }
     }
+
+
+    private void PlayNextPupup()
+    {
+        if (scoreQueue.Count == 0)
+        {
+            isScorePopupPlaying = false;
+            return;
+        }
+
+        isScorePopupPlaying = true;
+
+        string message = scoreQueue.Dequeue();
+        ShowScorePopup(message, PlayNextPupup);
+    }
+
+
+    private void ShowScorePopup(string message, System.Action onComplete)
+    {
+        var obj = Instantiate(scorePopUpPrefab, scorePopUpRoot);
+        var text = obj.GetComponent<TextMeshProUGUI>();
+        var rt = obj.GetComponent<RectTransform>();
+
+        text.text = message;
+        text.alpha = 1f;
+
+        var scoreRT = scoreText.rectTransform;
+
+        // ã‚¹ã‚³ã‚¢ã®å°‘ã—ä¸‹ã«å›ºå®š
+        rt.anchoredPosition =
+            scoreRT.anchoredPosition +
+            new Vector2(0, -scoreRT.rect.height);
+
+        // å³ã¸ã‚¹ãƒ©ã‚¤ãƒ‰
+        rt.DOAnchorPosX(rt.anchoredPosition.x + 80f, 0.6f);
+
+        text.DOFade(0f, 0.6f).OnComplete(() =>
+        {
+            Destroy(obj);
+            onComplete?.Invoke();
+        });
+    }
+
+
+
+
+
 
     private bool IsBoardFull()
     {
@@ -550,8 +630,8 @@ public class BoardManager : MonoBehaviour
     {
         if (isGameOver) return;
 
-        // ƒQ[ƒ€ƒI[ƒo[ˆ—
+        // ã‚²ãƒ¼ãƒ ã‚ªãƒ¼ãƒãƒ¼å‡¦ç†
         isGameOver = true;
-        Debug.Log("ƒQ[ƒ€ƒI[ƒo[");
+        Debug.Log("ã‚²ãƒ¼ãƒ ã‚ªãƒ¼ãƒãƒ¼");
     }
 }

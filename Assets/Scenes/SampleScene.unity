@@ -1677,6 +1677,8 @@ MonoBehaviour:
   tick33: {fileID: 1104013639}
   tick66: {fileID: 1992500597}
   fillArea: {fileID: 492255922}
+  scorePopUpPrefab: {fileID: 7469563393049422644, guid: 9a0d720a2914de64789dd353b0be92cc, type: 3}
+  scorePopUpRoot: {fileID: 1454501624}
   gaugeSlider: {fileID: 724994980}
   cursorView: {fileID: 1049984069}
   scoreText: {fileID: 510804722}
