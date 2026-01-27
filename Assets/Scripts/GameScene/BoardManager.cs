@@ -633,5 +633,9 @@ public class BoardManager : MonoBehaviour
         // ゲームオーバー処理
         isGameOver = true;
         Debug.Log("ゲームオーバー");
+
+        GameData.LastScore = totalScore;
+
+        UnityEngine.SceneManagement.SceneManager.LoadScene("ResultScene");
     }
 }
