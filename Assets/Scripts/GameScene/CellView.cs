@@ -36,8 +36,15 @@ public class CellView : MonoBehaviour
     {
         transform.DOKill();
         transform.localScale = Vector3.one;
-        transform.DOScale(1.2f, 0.12f).SetLoops(2, LoopType.Yoyo);
+
+        transform
+            .DOScale(1.25f, 0.08f)
+            .SetEase(Ease.OutBack)
+            .OnComplete(() =>
+                transform.DOScale(1f, 0.06f)
+            );
     }
+
 
     void OnDestroy()
     {
