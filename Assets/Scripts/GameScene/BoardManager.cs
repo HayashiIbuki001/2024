@@ -6,6 +6,8 @@ using TMPro;
 public class BoardManager : MonoBehaviour
 {
     [SerializeField] PlayerController playerController;
+    [SerializeField] ScoreManager scoreManager;
+    [SerializeField] BoardSystem boardSystem;
 
     // ===== 設定 =====
     [SerializeField] GameObject cellPrefab;
@@ -72,7 +74,8 @@ public class BoardManager : MonoBehaviour
         CreateBackground();
 
         // 予告セル
-        previewValue = GetDropValue();
+        boardSystem.GenerateNextValue();
+        previewValue = boardSystem.NextValue;
         previewCell = Instantiate(cellPrefab).GetComponent<CellView>();
         previewCell.SetValue(previewValue);
 
@@ -131,51 +134,30 @@ public class BoardManager : MonoBehaviour
 
     bool DropByPlayer(int x)
     {
-        activeCell = SpawnCell(x, previewValue);
+        // BoardSystemにSpawn＋落下＋Mergeを任せる
+        activeCell = boardSystem.SpawnAndResolve(x, previewValue);
         if (!activeCell.HasValue) return false;
 
-        ResolveChain();
+        // 盤面が変化した結果をViewに反映
         RefreshView();
+
+
+        if (boardSystem.ChainScore > 0)
+            scoreManager.Add(boardSystem.ChainScore);
+
         CheckGameOver();
 
-        previewValue = GetDropValue();
+        // 予告セル更新
+        boardSystem.GenerateNextValue();
+        previewValue = boardSystem.NextValue;
         previewCell.SetValue(previewValue);
         UpdatePreviewPosition();
 
         return true;
     }
 
-    Vector2Int? SpawnCell(int x, int value)
-    {
-        for (int y = 0; y < height; y++)
-        {
-            if (gridValues[x, y] != 0) continue;
-
-            gridValues[x, y] = value;
-
-            var cell = Instantiate(cellPrefab).GetComponent<CellView>();
-            cell.transform.position = new Vector3(x * cellSize, y * cellSize, 0);
-            cell.SetValue(value);
-
-            cells[x, y] = cell;
-            UpdateGaugeUI();
-
-            return new Vector2Int(x, y);
-        }
-        return null;
-    }
-
     // ===== 盤面処理（※ここは後で BoardSystem に置き換える）=====
 
-    void ResolveChain()
-    {
-        chainScore = 0;
-
-        // TODO : BoardSystem.ResolveChain()
-
-        if (chainScore > 0)
-            AddScore(chainScore);
-    }
 
     void ApplyFall()
     {
@@ -247,18 +229,14 @@ public class BoardManager : MonoBehaviour
 
     void TryDestroyBlock(int x, int y)
     {
-        int value = gridValues[x, y];
-        if (value == 0) return;
-
-        int lv = (int)Mathf.Log(value, 2);
-        if (lv < 5 || destroyGauge < gaugeStep) return;
+        int score = boardSystem.DestroyScore(x, y);
+        if (score <= 0 || destroyGauge < gaugeStep) return;
 
         destroyGauge -= gaugeStep;
+        scoreManager.Add(score);
 
-        int score = value * lv * lv;
-        AddScore(score);
-
-        DestroyBlock(x, y);
+        boardSystem.DestroyCell(x, y);
+        RefreshView();
     }
 
     void DestroyBlock(int x, int y)
@@ -271,24 +249,7 @@ public class BoardManager : MonoBehaviour
         RefreshView();
     }
 
-    // ===== スコア =====
-
-    void AddScore(int value)
-    {
-        totalScore += value;
-        scoreText.text = totalScore.ToString("N0");
-    }
-
     // ===== その他 =====
-
-    int GetDropValue()
-    {
-        int r = Random.Range(1, 101);
-        if (r <= 60) return 2;
-        if (r <= 85) return 4;
-        if (r <= 95) return 8;
-        return 16;
-    }
 
     void CheckGameOver()
     {
