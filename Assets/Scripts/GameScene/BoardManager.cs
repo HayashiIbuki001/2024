@@ -20,9 +20,7 @@ public class BoardManager : MonoBehaviour
     [SerializeField] CellAnimator cellAnimator;
 
     // ===== 盤面（※最終的に BoardSystem に移行予定）=====
-    int[,] gridValues;
     CellView[,] cells;
-    Vector2Int? activeCell;
 
     // ===== 落下 =====
     int dropWidthIndex;
@@ -34,12 +32,6 @@ public class BoardManager : MonoBehaviour
     // ===== 状態 =====
     bool isGameOver;
 
-    // ===== 破壊ゲージ =====
-    [SerializeField] Slider gaugeSlider;
-    [SerializeField] RectTransform tick33;
-    [SerializeField] RectTransform tick66;
-    [SerializeField] RectTransform fillArea;
-
     float destroyGauge = 0f;
     const float gaugeStep = 33.3f;
 
@@ -48,13 +40,10 @@ public class BoardManager : MonoBehaviour
     [SerializeField] GameObject cursorView;
     bool isDestroyMode = false;
 
-    // ===== スコア =====
-    [SerializeField] TextMeshProUGUI scoreText;
-    int totalScore;
-    int chainScore;
-
     void Start()
     {
+        boardSystem = new BoardSystem(width, height);
+
         // 入力
         playerController.OnMove += MoveDropIndex;
         playerController.OnDrop += Drop;
@@ -63,12 +52,6 @@ public class BoardManager : MonoBehaviour
         playerController.OnMoveCursor += MoveCursor;
         playerController.OnDestroy += TryDestroy;
 
-        // 初期化
-        gaugeSlider.maxValue = 100f;
-        totalScore = 0;
-        scoreText.text = totalScore.ToString("N0");
-
-        gridValues = new int[width, height];
         cells = new CellView[width, height];
 
         CreateBackground();
@@ -82,7 +65,6 @@ public class BoardManager : MonoBehaviour
         cursor = Vector2Int.zero;
         UpdateCursorView();
         UpdatePreviewPosition();
-        UpdateTicksPosition();
     }
 
     // ===== 入力 =====
@@ -134,53 +116,27 @@ public class BoardManager : MonoBehaviour
 
     bool DropByPlayer(int x)
     {
-        // BoardSystemにSpawn＋落下＋Mergeを任せる
-        activeCell = boardSystem.SpawnAndResolve(x, previewValue);
-        if (!activeCell.HasValue) return false;
+        if (!boardSystem.SpawnAndResolve(x, previewValue))
+            return false;
 
-        // 盤面が変化した結果をViewに反映
+        SyncViewFromBoard();
         RefreshView();
-
 
         if (boardSystem.ChainScore > 0)
             scoreManager.Add(boardSystem.ChainScore);
 
-        CheckGameOver();
-
-        // 予告セル更新
         boardSystem.GenerateNextValue();
         previewValue = boardSystem.NextValue;
         previewCell.SetValue(previewValue);
         UpdatePreviewPosition();
 
+        CheckGameOver();
         return true;
     }
 
-    // ===== 盤面処理（※ここは後で BoardSystem に置き換える）=====
 
 
-    void ApplyFall()
-    {
-        bool moved;
-        do
-        {
-            moved = false;
-            for (int x = 0; x < width; x++)
-                for (int y = 1; y < height; y++)
-                {
-                    if (gridValues[x, y] != 0 && gridValues[x, y - 1] == 0)
-                    {
-                        gridValues[x, y - 1] = gridValues[x, y];
-                        gridValues[x, y] = 0;
 
-                        cells[x, y - 1] = cells[x, y];
-                        cells[x, y] = null;
-
-                        moved = true;
-                    }
-                }
-        } while (moved);
-    }
 
     void RefreshView()
     {
@@ -205,26 +161,6 @@ public class BoardManager : MonoBehaviour
             new Vector3(cursor.x * cellSize, cursor.y * cellSize, -1);
     }
 
-    void UpdateGaugeUI()
-    {
-        gaugeSlider.value = destroyGauge;
-        Image fill = gaugeSlider.fillRect.GetComponent<Image>();
-
-        if (destroyGauge < gaugeStep) fill.color = Color.gray;
-        else if (destroyGauge < gaugeStep * 2) fill.color = new Color(0.5f, 1f, 0f);
-        else if (destroyGauge < gaugeStep * 3) fill.color = Color.yellow;
-        else fill.color = Color.orange;
-
-        UpdateTicksPosition();
-    }
-
-    void UpdateTicksPosition()
-    {
-        float w = fillArea.rect.width;
-        tick33.anchoredPosition = new Vector2(w * 0.333f, tick33.anchoredPosition.y);
-        tick66.anchoredPosition = new Vector2(w * 0.666f, tick66.anchoredPosition.y);
-    }
-
     // ===== 破壊 =====
 
     void TryDestroyBlock(int x, int y)
@@ -236,34 +172,49 @@ public class BoardManager : MonoBehaviour
         scoreManager.Add(score);
 
         boardSystem.DestroyCell(x, y);
+        SyncViewFromBoard();
         RefreshView();
     }
 
-    void DestroyBlock(int x, int y)
+    void CreateCellView(int x, int y, int value)
     {
-        gridValues[x, y] = 0;
-        Destroy(cells[x, y].gameObject);
-        cells[x, y] = null;
+        Debug.Log($"CreateCellView {x},{y} v={value}");
 
-        ApplyFall();
-        RefreshView();
+        var cell = Instantiate(cellPrefab).GetComponent<CellView>();
+        cell.SetValue(value);
+        cell.transform.position = new Vector3(x * cellSize, y * cellSize, 0);
+        cells[x, y] = cell;
     }
+
+    void SyncViewFromBoard()
+    {
+        for (int x = 0; x < width; x++)
+            for (int y = 0; y < height; y++)
+            {
+                int v = boardSystem.GetValue(x, y);
+
+                if (v == 0 && cells[x, y] != null)
+                {
+                    Destroy(cells[x, y].gameObject);
+                    cells[x, y] = null;
+                }
+                else if (v != 0)
+                {
+                    if (cells[x, y] == null)
+                        CreateCellView(x, y, v);
+                    else
+                        cells[x, y].SetValue(v);
+                }
+            }
+    }
+
 
     // ===== その他 =====
 
     void CheckGameOver()
     {
-        if (IsBoardFull())
+        if (boardSystem.IsBoardFull())
             GameOver();
-    }
-
-    bool IsBoardFull()
-    {
-        for (int x = 0; x < width; x++)
-            for (int y = 0; y < height; y++)
-                if (gridValues[x, y] == 0)
-                    return false;
-        return true;
     }
 
     void GameOver()

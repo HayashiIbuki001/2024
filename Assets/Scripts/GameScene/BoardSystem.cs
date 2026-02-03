@@ -2,12 +2,13 @@ using UnityEngine;
 
 public class BoardSystem
 {
-    private int width;
-    private int height;
-    private int[,] grid;
-    private Vector2Int? activeCell;
+    int width;
+    int height;
+    int[,] grid;
 
-    public int ChainScore {  get; private set; }
+    Vector2Int? activeCell;
+
+    public int ChainScore { get; private set; }
     public int NextValue { get; private set; }
 
     public BoardSystem(int w, int h)
@@ -17,103 +18,101 @@ public class BoardSystem
         grid = new int[w, h];
     }
 
-    public Vector2Int? SpawnAndResolve(int column, int value)
+    // ===== 外部参照 =====
+    public int GetValue(int x, int y) => grid[x, y];
+
+    // ===== 生成 =====
+    public bool SpawnAndResolve(int column, int value)
     {
-        // 新しいセルを追加
-        activeCell = SpawnCell(column, value);
-        if (!activeCell.HasValue) return null;
+        ChainScore = 0;
 
-        // 合体＋落下
-        ResolveChain();
-
-        return activeCell;
-    }
-
-    Vector2Int? SpawnCell(int x, int value)
-    {
         for (int y = 0; y < height; y++)
         {
-            if (grid[x, y] != 0) continue;
+            if (grid[column, y] != 0) continue;
 
-            grid[x, y] = value;
-            activeCell = new Vector2Int(x, y);  
-            return activeCell;
+            grid[column, y] = value;
+            activeCell = new Vector2Int(column, y);
+            Resolve();
+            return true;
         }
-        return null;
+        return false;
     }
 
 
-    // 仮：外から activeCell をセットする想定
-    public void SetActiveCell(int x, int y)
+    // ===== メイン解決 =====
+    void Resolve()
     {
-        activeCell = new Vector2Int(x, y);
-    }
+        bool changed;
+        int safety = 100;
 
-    public void ResolveChain()
-    {
-        while (activeCell.HasValue)
+        do
         {
-            while (TryMergeActive()) { }
+            changed = false;
 
-            ApplyFall();
-            activeCell = FindNextActiveCell();
-        }
+            if (ApplyFall())
+                changed = true;
+
+            while (activeCell.HasValue && TryMergeActive())
+            {
+                changed = true;
+                ApplyFall();
+            }
+
+            if (!changed)
+                activeCell = FindNextActiveCell();
+
+        } while (changed && safety-- > 0);
     }
 
-    private bool TryMergeActive()
+    // ===== 合体 =====
+    bool TryMergeActive()
     {
-        var p = activeCell.Value;
-        int x = p.x;
-        int y = p.y;
+        if (!activeCell.HasValue) return false;
+
+        int x = activeCell.Value.x;
+        int y = activeCell.Value.y;
         int v = grid[x, y];
 
-        // 縦（下）
+        if (v == 0) return false;
+
+        // 下
         if (y > 0 && grid[x, y - 1] == v)
         {
-            MergeDown(x, y);
+            grid[x, y - 1] *= 2;
+            grid[x, y] = 0;
+            ChainScore += grid[x, y - 1];
             activeCell = new Vector2Int(x, y - 1);
             return true;
         }
 
-        // 横（左）
+        // 左
         if (x > 0 && grid[x - 1, y] == v)
         {
-            MergeIntoActive(x, y, x - 1, y);
+            grid[x, y] *= 2;
+            grid[x - 1, y] = 0;
+            ChainScore += grid[x, y];
             return true;
         }
 
-        // 横（右）
+        // 右
         if (x < width - 1 && grid[x + 1, y] == v)
         {
-            MergeIntoActive(x, y, x + 1, y);
+            grid[x, y] *= 2;
+            grid[x + 1, y] = 0;
+            ChainScore += grid[x, y];
             return true;
         }
 
         return false;
     }
 
-    private void MergeDown(int x, int y)
+    // ===== 重力 =====
+    bool ApplyFall()
     {
-        grid[x, y - 1] *= 2;
-        grid[x, y] = 0;
+        bool moved = false;
 
-        ChainScore += grid[x, y - 1];
-    }
-
-    private void MergeIntoActive(int ax, int ay, int bx, int by)
-    {
-        grid[ax, ay] *= 2;
-        grid[bx, by] = 0;
-
-        ChainScore += grid[ax, ay];
-    }
-
-    private void ApplyFall()
-    {
-        bool moved;
-        do
+        for (int i = 0; i < height; i++)
         {
-            moved = false;
             for (int x = 0; x < width; x++)
             {
                 for (int y = 1; y < height; y++)
@@ -122,60 +121,67 @@ public class BoardSystem
                     {
                         grid[x, y - 1] = grid[x, y];
                         grid[x, y] = 0;
+
+                        activeCell = new Vector2Int(x, y - 1);
                         moved = true;
                     }
                 }
             }
         }
-        while (moved);
+        return moved;
     }
 
-    private Vector2Int? FindNextActiveCell()
+    // ===== 次のアクティブ探索 =====
+    Vector2Int? FindNextActiveCell()
     {
         for (int y = 0; y < height; y++)
-        {
             for (int x = 0; x < width; x++)
             {
                 int v = grid[x, y];
                 if (v == 0) continue;
 
-                if (y > 0 && grid[x, y - 1] == v)
-                    return new Vector2Int(x, y);
-
-                if (x > 0 && grid[x - 1, y] == v)
-                    return new Vector2Int(x, y);
-
-                if (x < width - 1 && grid[x + 1, y] == v)
-                    return new Vector2Int(x, y);
+                if (y > 0 && grid[x, y - 1] == v) return new Vector2Int(x, y);
+                if (x > 0 && grid[x - 1, y] == v) return new Vector2Int(x, y);
+                if (x < width - 1 && grid[x + 1, y] == v) return new Vector2Int(x, y);
             }
-        }
         return null;
     }
 
+    // ===== 破壊 =====
     public int DestroyScore(int x, int y)
     {
-        int value = grid[x, y];
-        int lv = (int)Mathf.Log(value, 2);
+        int v = grid[x, y];
+        if (v == 0) return 0;
+
+        int lv = (int)Mathf.Log(v, 2);
         if (lv < 5) return 0;
-        return value * lv * lv;
+        return v * lv * lv;
     }
 
     public void DestroyCell(int x, int y)
     {
         grid[x, y] = 0;
-
-        ApplyFall();
-
-        activeCell = FindNextActiveCell();
-        ResolveChain();
+        activeCell = new Vector2Int(x, y + 1);
+        Resolve();
     }
 
+    // ===== 次セル =====
     public void GenerateNextValue()
     {
         int r = Random.Range(1, 101);
-        if (r <= 60) NextValue =  2;
-        if (r <= 85) NextValue = 4;
-        if (r <= 95) NextValue = 8;
-        NextValue = 16;
+        if (r <= 60) NextValue = 2;
+        else if (r <= 85) NextValue = 4;
+        else if (r <= 95) NextValue = 8;
+        else NextValue = 16;
+    }
+
+    // ===== 判定 =====
+    public bool IsBoardFull()
+    {
+        for (int x = 0; x < width; x++)
+            for (int y = 0; y < height; y++)
+                if (grid[x, y] == 0)
+                    return false;
+        return true;
     }
 }

@@ -28,7 +28,7 @@ public class PlayerController : MonoBehaviour
         if (dir != Vector2Int.zero)
             OnMoveCursor?.Invoke(dir);
 
-        if (Input.GetKeyDown(KeyCode.Space))
-            OnDestroy?.Invoke();
+        //if (Input.GetKeyDown(KeyCode.Space))
+        //    OnDestroy?.Invoke();
     }
 }
