@@ -1,12 +1,18 @@
 using UnityEngine;
+using System;
 
+/// <summary>
+/// 盤面データとゲームロジックを管理するクラス
+/// </summary>
 public class BoardSystem
 {
-    int width;
-    int height;
-    int[,] grid;
+    public event Action<float> OnDestroyGaugeChanged;
 
-    Vector2Int? activeCell;
+    private int width, height;
+    private int[,] grid;
+    private Vector2Int? activeCell;
+
+    private float destroyGauge = 0f;
 
     public int ChainScore { get; private set; }
     public int NextValue { get; private set; }
@@ -19,9 +25,13 @@ public class BoardSystem
     }
 
     // ===== 外部参照 =====
+    /// <summary>指定セルの値を取得</summary>
     public int GetValue(int x, int y) => grid[x, y];
 
-    // ===== 生成 =====
+    // ===== 生成・落下 =====
+    /// <summary>
+    /// 指定列にセルを生成し解決を行う
+    /// </summary>
     public bool SpawnAndResolve(int column, int value)
     {
         ChainScore = 0;
@@ -38,9 +48,8 @@ public class BoardSystem
         return false;
     }
 
-
-    // ===== メイン解決 =====
-    void Resolve()
+    /// <summary>盤面の重力・合体処理のメインループ</summary>
+    private void Resolve()
     {
         bool changed;
         int safety = 100;
@@ -65,14 +74,14 @@ public class BoardSystem
     }
 
     // ===== 合体 =====
-    bool TryMergeActive()
+    /// <summary>アクティブセルの隣接セルと合体可能なら合体</summary>
+    private bool TryMergeActive()
     {
         if (!activeCell.HasValue) return false;
 
         int x = activeCell.Value.x;
         int y = activeCell.Value.y;
         int v = grid[x, y];
-
         if (v == 0) return false;
 
         // 下
@@ -81,6 +90,7 @@ public class BoardSystem
             grid[x, y - 1] *= 2;
             grid[x, y] = 0;
             ChainScore += grid[x, y - 1];
+            AddDestroyGauge(grid[x, y]);
             activeCell = new Vector2Int(x, y - 1);
             return true;
         }
@@ -91,6 +101,7 @@ public class BoardSystem
             grid[x, y] *= 2;
             grid[x - 1, y] = 0;
             ChainScore += grid[x, y];
+            AddDestroyGauge(grid[x, y]);
             return true;
         }
 
@@ -100,6 +111,7 @@ public class BoardSystem
             grid[x, y] *= 2;
             grid[x + 1, y] = 0;
             ChainScore += grid[x, y];
+            AddDestroyGauge(grid[x, y]);
             return true;
         }
 
@@ -107,32 +119,25 @@ public class BoardSystem
     }
 
     // ===== 重力 =====
-    bool ApplyFall()
+    /// <summary>セルを下に落下させる</summary>
+    private bool ApplyFall()
     {
         bool moved = false;
-
         for (int i = 0; i < height; i++)
-        {
             for (int x = 0; x < width; x++)
-            {
                 for (int y = 1; y < height; y++)
-                {
                     if (grid[x, y] != 0 && grid[x, y - 1] == 0)
                     {
                         grid[x, y - 1] = grid[x, y];
                         grid[x, y] = 0;
-
                         activeCell = new Vector2Int(x, y - 1);
                         moved = true;
                     }
-                }
-            }
-        }
         return moved;
     }
 
-    // ===== 次のアクティブ探索 =====
-    Vector2Int? FindNextActiveCell()
+    // ===== 次のアクティブセル探索 =====
+    private Vector2Int? FindNextActiveCell()
     {
         for (int y = 0; y < height; y++)
             for (int x = 0; x < width; x++)
@@ -147,7 +152,16 @@ public class BoardSystem
         return null;
     }
 
-    // ===== 破壊 =====
+    // ===== 破壊ゲージ =====
+    private void AddDestroyGauge(int value)
+    {
+        int lv = (int)Mathf.Log(value, 2);
+        destroyGauge += lv * lv / 4f;
+        if (destroyGauge >= 100) destroyGauge = 100f;
+        OnDestroyGaugeChanged?.Invoke(destroyGauge);
+    }
+
+    /// <summary>破壊スコアを計算</summary>
     public int DestroyScore(int x, int y)
     {
         int v = grid[x, y];
@@ -158,6 +172,7 @@ public class BoardSystem
         return v * lv * lv;
     }
 
+    /// <summary>セルを破壊して再解決</summary>
     public void DestroyCell(int x, int y)
     {
         grid[x, y] = 0;
@@ -165,10 +180,10 @@ public class BoardSystem
         Resolve();
     }
 
-    // ===== 次セル =====
+    // ===== 次セル生成 =====
     public void GenerateNextValue()
     {
-        int r = Random.Range(1, 101);
+        int r = UnityEngine.Random.Range(1, 101);
         if (r <= 60) NextValue = 2;
         else if (r <= 85) NextValue = 4;
         else if (r <= 95) NextValue = 8;
@@ -180,8 +195,7 @@ public class BoardSystem
     {
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
-                if (grid[x, y] == 0)
-                    return false;
+                if (grid[x, y] == 0) return false;
         return true;
     }
 }

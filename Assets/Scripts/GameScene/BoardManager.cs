@@ -1,53 +1,48 @@
-﻿using DG.Tweening;
-using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
+﻿using UnityEngine;
 
+/// <summary>
+/// ゲーム盤面の管理と操作を行うクラス
+/// </summary>
 public class BoardManager : MonoBehaviour
 {
+    [Header("参照")]
     [SerializeField] PlayerController playerController;
     [SerializeField] ScoreManager scoreManager;
     [SerializeField] BoardSystem boardSystem;
+    [SerializeField] CellAnimator cellAnimator;
+    [SerializeField] DestroyGaugeUI gaugeUI;
 
-    // ===== 設定 =====
+    [Header("セル設定")]
     [SerializeField] GameObject cellPrefab;
     [SerializeField] GameObject BGCellPrefab;
     [SerializeField] float cellSize = 1.1f;
 
-    [SerializeField] int width = 4;
-    [SerializeField] int height = 4;
+    [Header("盤面サイズ")]
+    [SerializeField] int width = 5;
+    [SerializeField] int height = 5;
 
-    [SerializeField] CellAnimator cellAnimator;
-
-    // ===== 盤面（※最終的に BoardSystem に移行予定）=====
-    CellView[,] cells;
-
-    // ===== 落下 =====
-    int dropWidthIndex;
-
-    // ===== 予告セル =====
-    CellView previewCell;
-    int previewValue;
-
-    // ===== 状態 =====
-    bool isGameOver;
-
-    float destroyGauge = 0f;
-    const float gaugeStep = 33.3f;
-
-    // ===== カーソル =====
-    Vector2Int cursor = Vector2Int.zero;
+    [Header("カーソル")]
     [SerializeField] GameObject cursorView;
-    bool isDestroyMode = false;
 
+    // ===== 内部状態 =====
+    private CellView[,] cells;
+    private int dropWidthIndex;
+    private CellView previewCell;
+    private int previewValue;
+    private Vector2Int cursor = Vector2Int.zero;
+    private bool isDestroyMode = false;
+    private bool isGameOver = false;
+    private float destroyGauge = 0f;
+    private const float gaugeStep = 33.3f;
+
+    // ===== 初期化 =====
     void Start()
     {
         boardSystem = new BoardSystem(width, height);
+        boardSystem.OnDestroyGaugeChanged += gaugeUI.SetGauge;
 
-        // 入力
         playerController.OnMove += MoveDropIndex;
         playerController.OnDrop += Drop;
-
         playerController.isDestroyMode += ToggleDestroyMode;
         playerController.OnMoveCursor += MoveCursor;
         playerController.OnDestroy += TryDestroy;
@@ -55,20 +50,33 @@ public class BoardManager : MonoBehaviour
         cells = new CellView[width, height];
 
         CreateBackground();
+        InitPreviewCell();
+        UpdateCursorView();
+    }
 
-        // 予告セル
+    /// <summary>
+    /// 背景セルを生成
+    /// </summary>
+    void CreateBackground()
+    {
+        for (int x = 0; x < width; x++)
+            for (int y = 0; y < height; y++)
+                Instantiate(BGCellPrefab, new Vector3(x * cellSize, y * cellSize, 0), Quaternion.identity);
+    }
+
+    /// <summary>
+    /// 予告セルの初期化
+    /// </summary>
+    void InitPreviewCell()
+    {
         boardSystem.GenerateNextValue();
         previewValue = boardSystem.NextValue;
         previewCell = Instantiate(cellPrefab).GetComponent<CellView>();
         previewCell.SetValue(previewValue);
-
-        cursor = Vector2Int.zero;
-        UpdateCursorView();
         UpdatePreviewPosition();
     }
 
-    // ===== 入力 =====
-
+    // ===== 入力操作 =====
     void MoveDropIndex(int dir)
     {
         dropWidthIndex = (dropWidthIndex + dir + width) % width;
@@ -89,11 +97,9 @@ public class BoardManager : MonoBehaviour
     void MoveCursor(Vector2Int dir)
     {
         if (!isDestroyMode) return;
-
         cursor += dir;
         cursor.x = Mathf.Clamp(cursor.x, 0, width - 1);
         cursor.y = Mathf.Clamp(cursor.y, 0, height - 1);
-
         UpdateCursorView();
     }
 
@@ -103,17 +109,10 @@ public class BoardManager : MonoBehaviour
         TryDestroyBlock(cursor.x, cursor.y);
     }
 
-    // ===== 生成 =====
-
-    void CreateBackground()
-    {
-        for (int x = 0; x < width; x++)
-            for (int y = 0; y < height; y++)
-                Instantiate(BGCellPrefab, new Vector3(x * cellSize, y * cellSize, 0), Quaternion.identity);
-    }
-
-    // ===== 落下 =====
-
+    // ===== 落下処理 =====
+    /// <summary>
+    /// 指定列にセルを落下させる
+    /// </summary>
     bool DropByPlayer(int x)
     {
         if (!boardSystem.SpawnAndResolve(x, previewValue))
@@ -134,10 +133,9 @@ public class BoardManager : MonoBehaviour
         return true;
     }
 
-
-
-
-
+    /// <summary>
+    /// ViewをBoardの状態に同期して移動アニメーションを適用
+    /// </summary>
     void RefreshView()
     {
         for (int x = 0; x < width; x++)
@@ -147,22 +145,18 @@ public class BoardManager : MonoBehaviour
     }
 
     // ===== UI =====
-
     void UpdatePreviewPosition()
     {
-        previewCell.transform.position =
-            new Vector3(dropWidthIndex * cellSize, height * cellSize + 0.5f, 0);
+        previewCell.transform.position = new Vector3(dropWidthIndex * cellSize, height * cellSize + 0.5f, 0);
     }
 
     void UpdateCursorView()
     {
         if (cursorView == null) return;
-        cursorView.transform.position =
-            new Vector3(cursor.x * cellSize, cursor.y * cellSize, -1);
+        cursorView.transform.position = new Vector3(cursor.x * cellSize, cursor.y * cellSize, -1);
     }
 
-    // ===== 破壊 =====
-
+    // ===== 破壊処理 =====
     void TryDestroyBlock(int x, int y)
     {
         int score = boardSystem.DestroyScore(x, y);
@@ -178,8 +172,6 @@ public class BoardManager : MonoBehaviour
 
     void CreateCellView(int x, int y, int value)
     {
-        Debug.Log($"CreateCellView {x},{y} v={value}");
-
         var cell = Instantiate(cellPrefab).GetComponent<CellView>();
         cell.SetValue(value);
         cell.transform.position = new Vector3(x * cellSize, y * cellSize, 0);
@@ -192,7 +184,6 @@ public class BoardManager : MonoBehaviour
             for (int y = 0; y < height; y++)
             {
                 int v = boardSystem.GetValue(x, y);
-
                 if (v == 0 && cells[x, y] != null)
                 {
                     Destroy(cells[x, y].gameObject);
@@ -208,9 +199,7 @@ public class BoardManager : MonoBehaviour
             }
     }
 
-
-    // ===== その他 =====
-
+    // ===== ゲーム状態 =====
     void CheckGameOver()
     {
         if (boardSystem.IsBoardFull())

@@ -299,6 +299,7 @@ GameObject:
   - component: {fileID: 510804721}
   - component: {fileID: 510804723}
   - component: {fileID: 510804722}
+  - component: {fileID: 510804724}
   m_Layer: 5
   m_Name: TotalScoreText
   m_TagString: Untagged
@@ -425,6 +426,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 510804720}
   m_CullTransparentMesh: 1
+--- !u!114 &510804724
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 510804720}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ebc10f8ecb5d4dd48a08f6e2b193562f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScoreManager
+  scoreText: {fileID: 510804722}
+  scorePopUpPrefab: {fileID: 7469563393049422644, guid: 9a0d720a2914de64789dd353b0be92cc, type: 3}
+  scorePopUpRoot: {fileID: 510804721}
 --- !u!1 &511201972
 GameObject:
   m_ObjectHideFlags: 0
@@ -735,8 +751,9 @@ GameObject:
   m_Component:
   - component: {fileID: 724994979}
   - component: {fileID: 724994980}
+  - component: {fileID: 724994981}
   m_Layer: 5
-  m_Name: Slider
+  m_Name: DestroyGauge
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -817,6 +834,22 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &724994981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 724994978}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7344c4e7ce16b33448db7af393d727c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DestroyGaugeUI
+  gaugeSlider: {fileID: 724994980}
+  tick33: {fileID: 1104013639}
+  tick66: {fileID: 1992500597}
+  fillArea: {fileID: 492255922}
 --- !u!1 &1049984069 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1456145690032049055, guid: fc91cdec60af0404ebc5c53216950b68, type: 3}
@@ -1649,6 +1682,7 @@ GameObject:
   - component: {fileID: 1899007799}
   - component: {fileID: 1899007798}
   - component: {fileID: 1899007800}
+  - component: {fileID: 1899007801}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -1668,20 +1702,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 30ece3459db70ec49bead1f450689f70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoardManager
+  playerController: {fileID: 1899007801}
+  scoreManager: {fileID: 510804724}
+  cellAnimator: {fileID: 1899007800}
+  gaugeUI: {fileID: 724994981}
   cellPrefab: {fileID: 4150478440360767197, guid: e3c3bcdd0ff19f74586b2ce03374ecc8, type: 3}
   BGCellPrefab: {fileID: 700464608908695337, guid: 30db523e2b492d04e90a6a94d66d0599, type: 3}
   cellSize: 1.1
   width: 5
   height: 5
-  cellAnimator: {fileID: 1899007800}
-  tick33: {fileID: 1104013639}
-  tick66: {fileID: 1992500597}
-  fillArea: {fileID: 492255922}
-  scorePopUpPrefab: {fileID: 7469563393049422644, guid: 9a0d720a2914de64789dd353b0be92cc, type: 3}
-  scorePopUpRoot: {fileID: 1454501624}
-  gaugeSlider: {fileID: 724994980}
   cursorView: {fileID: 1049984069}
-  scoreText: {fileID: 510804722}
 --- !u!4 &1899007799
 Transform:
   m_ObjectHideFlags: 0
@@ -1711,6 +1741,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CellAnimator
   cellSize: 1.1
   moveDuration: 0.15
+--- !u!114 &1899007801
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1899007797}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a5054577016b2b4b961c23b25ecbd71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerController
 --- !u!1 &1992500596
 GameObject:
   m_ObjectHideFlags: 0

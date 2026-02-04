@@ -440,7 +440,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ScoreManager
   scoreText: {fileID: 510804722}
   scorePopUpPrefab: {fileID: 7469563393049422644, guid: 9a0d720a2914de64789dd353b0be92cc, type: 3}
-  scorePopUpRoot: {fileID: 510804721}
+  scorePopUpRoot: {fileID: 1454501624}
 --- !u!1 &511201972
 GameObject:
   m_ObjectHideFlags: 0
