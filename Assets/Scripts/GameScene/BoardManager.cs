@@ -32,7 +32,7 @@ public class BoardManager : MonoBehaviour
     private Vector2Int cursor = Vector2Int.zero;
     private bool isDestroyMode = false;
     private bool isGameOver = false;
-    private float destroyGauge = 0f;
+
     private const float gaugeStep = 33.3f;
 
     // ===== 初期化 =====
@@ -43,7 +43,7 @@ public class BoardManager : MonoBehaviour
 
         playerController.OnMove += MoveDropIndex;
         playerController.OnDrop += Drop;
-        playerController.isDestroyMode += ToggleDestroyMode;
+        playerController.OnDestroyModeChanged += OnDestroyModeChanged;
         playerController.OnMoveCursor += MoveCursor;
         playerController.OnDestroy += TryDestroy;
 
@@ -54,9 +54,7 @@ public class BoardManager : MonoBehaviour
         UpdateCursorView();
     }
 
-    /// <summary>
-    /// 背景セルを生成
-    /// </summary>
+    // ===== 背景 =====
     void CreateBackground()
     {
         for (int x = 0; x < width; x++)
@@ -64,9 +62,7 @@ public class BoardManager : MonoBehaviour
                 Instantiate(BGCellPrefab, new Vector3(x * cellSize, y * cellSize, 0), Quaternion.identity);
     }
 
-    /// <summary>
-    /// 予告セルの初期化
-    /// </summary>
+    // ===== 予告セル =====
     void InitPreviewCell()
     {
         boardSystem.GenerateNextValue();
@@ -76,7 +72,7 @@ public class BoardManager : MonoBehaviour
         UpdatePreviewPosition();
     }
 
-    // ===== 入力操作 =====
+    // ===== 入力 =====
     void MoveDropIndex(int dir)
     {
         dropWidthIndex = (dropWidthIndex + dir + width) % width;
@@ -86,12 +82,6 @@ public class BoardManager : MonoBehaviour
     void Drop()
     {
         DropByPlayer(dropWidthIndex);
-    }
-
-    void ToggleDestroyMode()
-    {
-        isDestroyMode = !isDestroyMode;
-        cursorView.SetActive(isDestroyMode);
     }
 
     void MoveCursor(Vector2Int dir)
@@ -106,13 +96,21 @@ public class BoardManager : MonoBehaviour
     void TryDestroy()
     {
         if (!isDestroyMode) return;
-        TryDestroyBlock(cursor.x, cursor.y);
+
+        if (!boardSystem.CanConsume(gaugeStep)) return;
+
+        int score = boardSystem.DestroyScore(cursor.x, cursor.y);
+        if (score <= 0) return;
+
+        boardSystem.ConsumeGauge(gaugeStep);
+        scoreManager.Add(score);
+
+        boardSystem.DestroyCell(cursor.x, cursor.y);
+        SyncViewFromBoard();
+        RefreshView();
     }
 
-    // ===== 落下処理 =====
-    /// <summary>
-    /// 指定列にセルを落下させる
-    /// </summary>
+    // ===== 落下 =====
     bool DropByPlayer(int x)
     {
         if (!boardSystem.SpawnAndResolve(x, previewValue))
@@ -133,9 +131,6 @@ public class BoardManager : MonoBehaviour
         return true;
     }
 
-    /// <summary>
-    /// ViewをBoardの状態に同期して移動アニメーションを適用
-    /// </summary>
     void RefreshView()
     {
         for (int x = 0; x < width; x++)
@@ -147,29 +142,25 @@ public class BoardManager : MonoBehaviour
     // ===== UI =====
     void UpdatePreviewPosition()
     {
-        previewCell.transform.position = new Vector3(dropWidthIndex * cellSize, height * cellSize + 0.5f, 0);
+        previewCell.transform.position =
+            new Vector3(dropWidthIndex * cellSize, height * cellSize + 0.5f, 0);
     }
 
     void UpdateCursorView()
     {
         if (cursorView == null) return;
-        cursorView.transform.position = new Vector3(cursor.x * cellSize, cursor.y * cellSize, -1);
+        cursorView.transform.position =
+            new Vector3(cursor.x * cellSize, cursor.y * cellSize, -1);
     }
 
-    // ===== 破壊処理 =====
-    void TryDestroyBlock(int x, int y)
+    // ===== 破壊モード =====
+    void OnDestroyModeChanged(bool mode)
     {
-        int score = boardSystem.DestroyScore(x, y);
-        if (score <= 0 || destroyGauge < gaugeStep) return;
-
-        destroyGauge -= gaugeStep;
-        scoreManager.Add(score);
-
-        boardSystem.DestroyCell(x, y);
-        SyncViewFromBoard();
-        RefreshView();
+        isDestroyMode = mode;
+        cursorView.SetActive(isDestroyMode);
     }
 
+    // ===== View同期 =====
     void CreateCellView(int x, int y, int value)
     {
         var cell = Instantiate(cellPrefab).GetComponent<CellView>();

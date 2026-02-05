@@ -87,10 +87,13 @@ public class BoardSystem
         // ‰º
         if (y > 0 && grid[x, y - 1] == v)
         {
-            grid[x, y - 1] *= 2;
+            int newValue = v * 2;
+            grid[x, y - 1] = newValue;
             grid[x, y] = 0;
-            ChainScore += grid[x, y - 1];
-            AddDestroyGauge(grid[x, y]);
+
+            ChainScore += newValue;
+            AddDestroyGauge(newValue);
+
             activeCell = new Vector2Int(x, y - 1);
             return true;
         }
@@ -98,20 +101,28 @@ public class BoardSystem
         // ¶
         if (x > 0 && grid[x - 1, y] == v)
         {
-            grid[x, y] *= 2;
+            int newValue = v * 2;
+            grid[x, y] = newValue;
             grid[x - 1, y] = 0;
-            ChainScore += grid[x, y];
-            AddDestroyGauge(grid[x, y]);
+
+            ChainScore += newValue;
+            AddDestroyGauge(newValue);
+
+            activeCell = new Vector2Int(x, y);
             return true;
         }
 
         // ‰E
         if (x < width - 1 && grid[x + 1, y] == v)
         {
-            grid[x, y] *= 2;
+            int newValue = v * 2;
+            grid[x, y] = newValue;
             grid[x + 1, y] = 0;
-            ChainScore += grid[x, y];
-            AddDestroyGauge(grid[x, y]);
+
+            ChainScore += newValue;
+            AddDestroyGauge(newValue);
+
+            activeCell = new Vector2Int(x, y);
             return true;
         }
 
@@ -123,6 +134,7 @@ public class BoardSystem
     private bool ApplyFall()
     {
         bool moved = false;
+
         for (int i = 0; i < height; i++)
             for (int x = 0; x < width; x++)
                 for (int y = 1; y < height; y++)
@@ -130,9 +142,9 @@ public class BoardSystem
                     {
                         grid[x, y - 1] = grid[x, y];
                         grid[x, y] = 0;
-                        activeCell = new Vector2Int(x, y - 1);
                         moved = true;
                     }
+
         return moved;
     }
 
@@ -153,6 +165,18 @@ public class BoardSystem
     }
 
     // ===== ”j‰óƒQ[ƒW =====
+
+    public bool CanConsume(float cost)
+    {
+        return destroyGauge >= cost;
+    }
+
+    public void ConsumeGauge(float cost)
+    {
+        destroyGauge -= cost;
+        OnDestroyGaugeChanged?.Invoke(destroyGauge);
+    }
+
     private void AddDestroyGauge(int value)
     {
         int lv = (int)Mathf.Log(value, 2);

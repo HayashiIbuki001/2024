@@ -11,13 +11,22 @@ public class PlayerController : MonoBehaviour
 
     public Action OnDestroy;
     public Action<Vector2Int> OnMoveCursor;
-    public Action isDestroyMode;
+    public Action<bool> OnDestroyModeChanged;
+
+    private bool destroyMode = false;
 
     private void Update()
     {
-        HandleDropAndMove();
-        HandleDestroyMode();
-        HandleCursorMovement();
+
+        if (destroyMode)
+        {
+            HandleCursorMovement();
+            HandleDestroy();
+        }
+        else
+        {
+            HandleDropAndMove();
+        }
     }
 
     /// <summary>
@@ -33,10 +42,15 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// îjâÛÉÇÅ[ÉhêÿÇËë÷Ç¶ÇÃì¸óÕ
     /// </summary>
-    private void HandleDestroyMode()
+    public void OnClickDestroyButton()
     {
-        if (Input.GetKeyDown(KeyCode.Tab))
-            isDestroyMode?.Invoke();
+        ToggleDestroyMode();
+    }
+
+    private void ToggleDestroyMode()
+    {
+        destroyMode = !destroyMode;
+        OnDestroyModeChanged?.Invoke(destroyMode);
     }
 
     /// <summary>
@@ -52,5 +66,11 @@ public class PlayerController : MonoBehaviour
 
         if (dir != Vector2Int.zero)
             OnMoveCursor?.Invoke(dir);
+    }
+
+    private void HandleDestroy()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+            OnDestroy?.Invoke();
     }
 }

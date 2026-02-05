@@ -17,6 +17,10 @@ public class ScoreManager : MonoBehaviour
     private Queue<string> queue = new();
     private bool isScorePopupPlaying = false;
 
+    private float destroyGauge = 0f;
+    private const float gaugeStep = 33.3f;
+    public bool CanDestroy(float cost) => destroyGauge >= cost;
+
     // ===== ‰Šú‰» =====
     private void Start()
     {
