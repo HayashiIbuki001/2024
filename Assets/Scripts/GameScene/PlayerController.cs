@@ -14,9 +14,11 @@ public class PlayerController : MonoBehaviour
     public Action<bool> OnDestroyModeChanged;
 
     private bool destroyMode = false;
+    private bool isControlEnabled = true;
 
     private void Update()
     {
+        if (!isControlEnabled) return;
 
         if (destroyMode)
         {
@@ -72,5 +74,13 @@ public class PlayerController : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Space))
             OnDestroy?.Invoke();
+    }
+
+    /// <summary>
+    /// ÉvÉåÉCÉÑÅ[ëÄçÏÇé~ÇﬂÇÈ
+    /// </summary>
+    public void StopControl()
+    {
+        isControlEnabled = false;
     }
 }

@@ -13,6 +13,7 @@ public class BoardSystem
     private Vector2Int? activeCell;
 
     private float destroyGauge = 0f;
+    private const float destroyCost = 33.3f;
 
     public int ChainScore { get; private set; }
     public int NextValue { get; private set; }
@@ -58,20 +59,36 @@ public class BoardSystem
         {
             changed = false;
 
+            // 落下
             if (ApplyFall())
+            {
                 changed = true;
+                activeCell = FindNextActiveCell();
+            }
 
+            // 合体
             while (activeCell.HasValue && TryMergeActive())
             {
                 changed = true;
-                ApplyFall();
+
+                if (ApplyFall())
+                    activeCell = FindNextActiveCell();
             }
 
             if (!changed)
                 activeCell = FindNextActiveCell();
 
-        } while (changed && safety-- > 0);
+            safety--;
+
+            if (safety <= 0)
+            {
+                Debug.LogWarning("Resolve safety hit");
+                break;
+            }
+
+        } while (changed);
     }
+
 
     // ===== 合体 =====
     /// <summary>アクティブセルの隣接セルと合体可能なら合体</summary>
@@ -221,5 +238,21 @@ public class BoardSystem
             for (int y = 0; y < height; y++)
                 if (grid[x, y] == 0) return false;
         return true;
+    }
+
+    public bool CanDestroy()
+    {
+        if (!CanConsume(destroyCost)) return false; // 破壊ゲージがたまってるか
+
+        // DestroyScoreが0じゃない(16以下じゃない)かどうか
+        for (int x = 0; x < width; x++)
+            for (int y = 0; y < height; y++)
+            {
+                if (DestroyScore(x, y) > 0)
+                {
+                    return true; // 16以上だったら破壊可能
+                }
+            }
+        return false;
     }
 }

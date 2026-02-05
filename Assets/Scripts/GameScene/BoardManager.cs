@@ -32,6 +32,7 @@ public class BoardManager : MonoBehaviour
     private Vector2Int cursor = Vector2Int.zero;
     private bool isDestroyMode = false;
     private bool isGameOver = false;
+    private bool isResolving;
 
     private const float gaugeStep = 33.3f;
 
@@ -81,7 +82,10 @@ public class BoardManager : MonoBehaviour
 
     void Drop()
     {
+        if (isResolving) return;
+        isResolving = true;
         DropByPlayer(dropWidthIndex);
+        isResolving = false;
     }
 
     void MoveCursor(Vector2Int dir)
@@ -194,13 +198,20 @@ public class BoardManager : MonoBehaviour
     void CheckGameOver()
     {
         if (boardSystem.IsBoardFull())
-            GameOver();
+            if (!boardSystem.CanDestroy())
+                GameOver();
     }
 
-    void GameOver()
+    private void GameOver()
     {
         if (isGameOver) return;
+
         isGameOver = true;
+
+        playerController.StopControl();
+        previewCell.gameObject.SetActive(false);
+        cursorView.SetActive(false);
+
         Debug.Log("GameOver");
     }
 }
