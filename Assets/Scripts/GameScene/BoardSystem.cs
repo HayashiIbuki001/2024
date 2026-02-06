@@ -76,7 +76,17 @@ public class BoardSystem
             }
 
             if (!changed)
-                activeCell = FindNextActiveCell();
+            {
+                if (FinalCheckMerge())
+                {
+                    changed = true;
+                }
+                else
+                {
+                    activeCell = FindNextActiveCell();
+                }
+            }
+
 
             safety--;
 
@@ -145,6 +155,71 @@ public class BoardSystem
 
         return false;
     }
+
+    /// <summary>
+    /// 全探索
+    /// </summary>
+    /// <returns>盤面が動くかどうか</returns>
+    bool FinalCheckMerge()
+    {
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+            {
+                int v = grid[x, y];
+                if (v == 0) continue;
+
+                // 下
+                if (y > 0 && grid[x, y - 1] == v)
+                {
+                    int newValue = v * 2;
+                    Debug.Log($"[FinalCheck] merge at ({x},{y}) v={v}");
+
+                    grid[x, y - 1] = newValue;
+                    grid[x, y] = 0;
+
+                    ChainScore += newValue;
+                    AddDestroyGauge(newValue);
+
+                    activeCell = new Vector2Int(x, y - 1);
+                    return true;
+                }
+
+                // 左
+                if (x > 0 && grid[x - 1, y] == v)
+                {
+                    int newValue = v * 2;
+                    Debug.Log($"[FinalCheck] merge at ({x},{y}) v={v}");
+
+                    grid[x, y] = newValue;
+                    grid[x - 1, y] = 0;
+
+                    ChainScore += newValue;
+                    AddDestroyGauge(newValue);
+
+                    activeCell = new Vector2Int(x, y);
+                    return true;
+                }
+
+                // 右
+                if (x < width - 1 && grid[x + 1, y] == v)
+                {
+                    int newValue = v * 2;
+                    Debug.Log($"[FinalCheck] merge at ({x},{y}) v={v}");
+
+                    grid[x, y] = newValue;
+                    grid[x + 1, y] = 0;
+
+                    ChainScore += newValue;
+                    AddDestroyGauge(newValue);
+
+                    activeCell = new Vector2Int(x, y);
+                    return true;
+                }
+            }
+        return false;
+    }
+
+
 
     // ===== 重力 =====
     /// <summary>セルを下に落下させる</summary>
