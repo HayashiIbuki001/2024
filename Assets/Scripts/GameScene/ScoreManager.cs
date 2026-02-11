@@ -13,7 +13,7 @@ public class ScoreManager : MonoBehaviour
     [SerializeField] private GameObject scorePopUpPrefab;
     [SerializeField] private RectTransform scorePopUpRoot;
 
-    private int totalScore;
+    public int totalScore;
     private Queue<string> queue = new();
     private bool isScorePopupPlaying = false;
 

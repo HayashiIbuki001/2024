@@ -1,4 +1,6 @@
 ﻿using UnityEngine;
+using UnityEditor.SceneManagement;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// ゲーム盤面の管理と操作を行うクラス
@@ -33,8 +35,8 @@ public class BoardManager : MonoBehaviour
     private bool isDestroyMode = false;
     private bool isGameOver = false;
     private bool isResolving;
-
     private const float gaugeStep = 33.3f;
+
 
     // ===== 初期化 =====
     void Start()
@@ -195,7 +197,7 @@ public class BoardManager : MonoBehaviour
     }
 
     // ===== ゲーム状態 =====
-    void CheckGameOver()
+    private void CheckGameOver()
     {
         if (boardSystem.IsBoardFull())
             if (!boardSystem.CanDestroy())
@@ -212,6 +214,8 @@ public class BoardManager : MonoBehaviour
         previewCell.gameObject.SetActive(false);
         cursorView.SetActive(false);
 
-        Debug.Log("GameOver");
+        GameData.LastScore = scoreManager.totalScore;
+
+        SceneManager.LoadScene("ResultScene");
     }
 }
