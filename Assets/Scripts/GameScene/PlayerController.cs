@@ -12,13 +12,21 @@ public class PlayerController : MonoBehaviour
     public Action OnDestroy;
     public Action<Vector2Int> OnMoveCursor;
     public Action<bool> OnDestroyModeChanged;
+    public Action OnPause;
 
     private bool destroyMode = false;
     private bool isControlEnabled = true;
+    private bool isPaused = false;
 
     private void Update()
     {
-        if (!isControlEnabled) return;
+        if (Input.GetKeyUp(KeyCode.Escape))
+        {
+            OnPause?.Invoke();
+            return;
+        }
+
+        if (!isControlEnabled || isPaused) return;
 
         if (destroyMode)
         {
@@ -74,6 +82,11 @@ public class PlayerController : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Space))
             OnDestroy?.Invoke();
+    }
+
+    public void SetPause(bool pause)
+    {
+        isPaused = pause;
     }
 
     /// <summary>

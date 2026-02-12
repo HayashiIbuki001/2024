@@ -25,6 +25,10 @@ public class BoardManager : MonoBehaviour
     [Header("カーソル")]
     [SerializeField] GameObject cursorView;
 
+    [Header("ポーズ")]
+    [SerializeField] GameObject pauseCanvas;
+    private bool isPaused;
+
     [Header("効果音/BGM")]
     [SerializeField] AudioClip gameBGM;
     [SerializeField] AudioClip conbineSE;
@@ -56,6 +60,7 @@ public class BoardManager : MonoBehaviour
         playerController.OnDestroyModeChanged += OnDestroyModeChanged;
         playerController.OnMoveCursor += MoveCursor;
         playerController.OnDestroy += TryDestroy;
+        playerController.OnPause += TogglePause;
 
         cells = new CellView[width, height];
 
@@ -215,6 +220,16 @@ public class BoardManager : MonoBehaviour
     }
 
     // ===== ゲーム状態 =====
+    public void TogglePause()
+    {
+        isPaused = !isPaused;
+        playerController.SetPause(isPaused);
+
+        pauseCanvas.SetActive(isPaused);
+        Time.timeScale = isPaused ? 0f : 1f;
+    }
+
+
     private void CheckGameOver()
     {
         if (boardSystem.IsBoardFull())

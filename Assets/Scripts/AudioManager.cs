@@ -7,15 +7,27 @@ public class AudioManager : MonoBehaviour
     [SerializeField] AudioSource bgmSource;
     [SerializeField] AudioSource seSource;
 
-    private void Awake()
+    void Awake()
     {
         if (instance != null && instance != this)
         {
-            Destroy(instance);
+            Destroy(gameObject);
             return;
         }
+
         instance = this;
         DontDestroyOnLoad(gameObject);
+
+        // ï€ë∂ílì«Ç›çûÇ›
+        bgmSource.volume = PlayerPrefs.GetFloat("BGM", 0.5f);
+        seSource.volume = PlayerPrefs.GetFloat("SE", 3);
+    }
+
+    // ===== çƒê∂ =====
+    public void PlayBGM(AudioClip clip)
+    {
+        bgmSource.clip = clip;
+        bgmSource.Play();
     }
 
     public void PlaySE(AudioClip clip)
@@ -23,9 +35,14 @@ public class AudioManager : MonoBehaviour
         seSource.PlayOneShot(clip);
     }
 
-    public void PlayBGM(AudioClip clip)
+    // ===== âπó  =====
+    public void SetBGMVolume(float v)
     {
-        bgmSource.clip = clip;
-        bgmSource.Play();
+        bgmSource.volume = v;
+    }
+
+    public void SetSEVolume(float v)
+    {
+        seSource.volume = v;
     }
 }
