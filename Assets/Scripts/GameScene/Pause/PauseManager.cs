@@ -11,6 +11,9 @@ public class PauseManager : MonoBehaviour
     [SerializeField] GameObject pausePage;
     [SerializeField] GameObject settingPage;
 
+    [Header("効果音")]
+    [SerializeField] AudioClip pushSE;
+
     private void OnEnable()
     {
         // イベント発火させずに値セット
@@ -20,31 +23,44 @@ public class PauseManager : MonoBehaviour
 
     public void OnResume()
     {
+        AudioManager.instance.PlaySE(pushSE);
+
         boardManager.TogglePause();
+    }
+
+    public void ResetToPausePage()
+    {
+        pausePage.SetActive(true);
+        settingPage.SetActive(false);
     }
 
     public void OnBGMChanged(float v)
     {
         AudioManager.instance.SetBGMVolume(v);
         PlayerPrefs.SetFloat("BGM", v);
-        PlayerPrefs.Save();
     }
 
     public void OnSEChanged(float v)
     {
         AudioManager.instance.SetSEVolume(v);
         PlayerPrefs.SetFloat("SE", v);
-        PlayerPrefs.Save();
+    }
+
+    public void OnSEPreview()
+    {
+        AudioManager.instance.PlaySE(pushSE);
     }
 
     public void GoSettingPage()
     {
+        AudioManager.instance.PlaySE(pushSE);
         settingPage.SetActive(true);
         pausePage.SetActive(false);
     }
 
     public void BackPausePage()
     {
+        AudioManager.instance.PlaySE(pushSE);
         pausePage.SetActive(true);
         settingPage.SetActive(false);
     }

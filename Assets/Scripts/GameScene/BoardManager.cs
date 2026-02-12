@@ -12,6 +12,7 @@ public class BoardManager : MonoBehaviour
     [SerializeField] BoardSystem boardSystem;
     [SerializeField] CellAnimator cellAnimator;
     [SerializeField] DestroyGaugeUI gaugeUI;
+    [SerializeField] PauseManager pauseManager;
 
     [Header("セル設定")]
     [SerializeField] GameObject cellPrefab;
@@ -227,6 +228,8 @@ public class BoardManager : MonoBehaviour
 
         pauseCanvas.SetActive(isPaused);
         Time.timeScale = isPaused ? 0f : 1f;
+
+        if (isPaused) pauseManager.ResetToPausePage();
     }
 
 
