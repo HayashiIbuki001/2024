@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class PauseManager : MonoBehaviour
@@ -23,9 +24,13 @@ public class PauseManager : MonoBehaviour
 
     public void OnResume()
     {
-        AudioManager.instance.PlaySE(pushSE);
-
         boardManager.TogglePause();
+    }
+
+    public void OnTitleButton()
+    {
+        AudioManager.instance.PlaySE(pushSE);
+        SceneManager.LoadScene("TitleScene");
     }
 
     public void ResetToPausePage()

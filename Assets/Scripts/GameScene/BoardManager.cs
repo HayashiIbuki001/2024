@@ -36,6 +36,7 @@ public class BoardManager : MonoBehaviour
     [SerializeField] AudioClip dropSE;
     [SerializeField] AudioClip destroyModeSE;
     [SerializeField] AudioClip destroySE;
+    [SerializeField] AudioClip pushSE;
     //[SerializeField] AudioClip gameOverSE;
 
     // ===== 内部状態 =====
@@ -224,6 +225,7 @@ public class BoardManager : MonoBehaviour
     public void TogglePause()
     {
         isPaused = !isPaused;
+        AudioManager.instance.PlaySE(pushSE);
         playerController.SetPause(isPaused);
 
         pauseCanvas.SetActive(isPaused);
