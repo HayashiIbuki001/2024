@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
 
 /// <summary>
@@ -26,6 +25,14 @@ public class BoardManager : MonoBehaviour
     [Header("カーソル")]
     [SerializeField] GameObject cursorView;
 
+    [Header("効果音/BGM")]
+    [SerializeField] AudioClip gameBGM;
+    [SerializeField] AudioClip conbineSE;
+    [SerializeField] AudioClip dropSE;
+    [SerializeField] AudioClip destroyModeSE;
+    [SerializeField] AudioClip destroySE;
+    //[SerializeField] AudioClip gameOverSE;
+
     // ===== 内部状態 =====
     private CellView[,] cells;
     private int dropWidthIndex;
@@ -51,6 +58,8 @@ public class BoardManager : MonoBehaviour
         playerController.OnDestroy += TryDestroy;
 
         cells = new CellView[width, height];
+
+        AudioManager.instance.PlayBGM(gameBGM);
 
         CreateBackground();
         InitPreviewCell();
@@ -108,6 +117,8 @@ public class BoardManager : MonoBehaviour
         int score = boardSystem.DestroyScore(cursor.x, cursor.y);
         if (score <= 0) return;
 
+        AudioManager.instance.PlaySE(destroySE);
+
         boardSystem.ConsumeGauge(gaugeStep);
         scoreManager.Add(score);
 
@@ -122,11 +133,16 @@ public class BoardManager : MonoBehaviour
         if (!boardSystem.SpawnAndResolve(x, previewValue))
             return false;
 
+        AudioManager.instance.PlaySE(dropSE);
+
         SyncViewFromBoard();
         RefreshView();
 
         if (boardSystem.ChainScore > 0)
+        {
+            AudioManager.instance.PlaySE(conbineSE);  
             scoreManager.Add(boardSystem.ChainScore);
+        }
 
         boardSystem.GenerateNextValue();
         previewValue = boardSystem.NextValue;
@@ -164,6 +180,8 @@ public class BoardManager : MonoBehaviour
     {
         isDestroyMode = mode;
         cursorView.SetActive(isDestroyMode);
+
+        AudioManager.instance.PlaySE(destroyModeSE);
     }
 
     // ===== View同期 =====
@@ -209,6 +227,8 @@ public class BoardManager : MonoBehaviour
         if (isGameOver) return;
 
         isGameOver = true;
+
+        //audioSource.PlayOneShot(gameOverSE);
 
         playerController.StopControl();
         previewCell.gameObject.SetActive(false);
