@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
@@ -39,6 +40,11 @@ public class BoardManager : MonoBehaviour
     [SerializeField] AudioClip pushSE;
     //[SerializeField] AudioClip gameOverSE;
 
+    [Header("エフェクト")]
+    [SerializeField] GameObject destroyModeEffect;
+    [SerializeField] GameObject margeEffect;
+    [SerializeField] float effectFadeTime = 0.3f;
+
     // ===== 内部状態 =====
     private CellView[,] cells;
     private int dropWidthIndex;
@@ -50,9 +56,11 @@ public class BoardManager : MonoBehaviour
     private bool isResolving;
     private const float gaugeStep = 33.3f;
 
+    private Coroutine margeRoutine;
+
 
     // ===== 初期化 =====
-    void Start()
+    private void Start()
     {
         boardSystem = new BoardSystem(width, height);
         boardSystem.OnDestroyGaugeChanged += gaugeUI.SetGauge;
@@ -71,10 +79,13 @@ public class BoardManager : MonoBehaviour
         CreateBackground();
         InitPreviewCell();
         UpdateCursorView();
+
+        margeEffect.SetActive(false);
+        destroyModeEffect.SetActive(false);
     }
 
     // ===== 背景 =====
-    void CreateBackground()
+    private void CreateBackground()
     {
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -82,7 +93,7 @@ public class BoardManager : MonoBehaviour
     }
 
     // ===== 予告セル =====
-    void InitPreviewCell()
+    private void InitPreviewCell()
     {
         boardSystem.GenerateNextValue();
         previewValue = boardSystem.NextValue;
@@ -92,13 +103,13 @@ public class BoardManager : MonoBehaviour
     }
 
     // ===== 入力 =====
-    void MoveDropIndex(int dir)
+    private void MoveDropIndex(int dir)
     {
         dropWidthIndex = (dropWidthIndex + dir + width) % width;
         UpdatePreviewPosition();
     }
 
-    void Drop()
+    private void Drop()
     {
         if (isResolving) return;
         isResolving = true;
@@ -106,7 +117,7 @@ public class BoardManager : MonoBehaviour
         isResolving = false;
     }
 
-    void MoveCursor(Vector2Int dir)
+    private void MoveCursor(Vector2Int dir)
     {
         if (!isDestroyMode) return;
         cursor += dir;
@@ -115,7 +126,7 @@ public class BoardManager : MonoBehaviour
         UpdateCursorView();
     }
 
-    void TryDestroy()
+    private void TryDestroy()
     {
         if (!isDestroyMode) return;
 
@@ -135,7 +146,7 @@ public class BoardManager : MonoBehaviour
     }
 
     // ===== 落下 =====
-    bool DropByPlayer(int x)
+    private bool DropByPlayer(int x)
     {
         if (!boardSystem.SpawnAndResolve(x, previewValue))
             return false;
@@ -149,6 +160,8 @@ public class BoardManager : MonoBehaviour
         {
             AudioManager.instance.PlaySE(conbineSE);  
             scoreManager.Add(boardSystem.ChainScore);
+
+            PlayMargeEffect();
         }
 
         boardSystem.GenerateNextValue();
@@ -160,7 +173,7 @@ public class BoardManager : MonoBehaviour
         return true;
     }
 
-    void RefreshView()
+    private void RefreshView()
     {
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -169,13 +182,13 @@ public class BoardManager : MonoBehaviour
     }
 
     // ===== UI =====
-    void UpdatePreviewPosition()
+    private void UpdatePreviewPosition()
     {
         previewCell.transform.position =
             new Vector3(dropWidthIndex * cellSize, height * cellSize + 0.5f, 0);
     }
 
-    void UpdateCursorView()
+    private void UpdateCursorView()
     {
         if (cursorView == null) return;
         cursorView.transform.position =
@@ -183,16 +196,18 @@ public class BoardManager : MonoBehaviour
     }
 
     // ===== 破壊モード =====
-    void OnDestroyModeChanged(bool mode)
+    private void OnDestroyModeChanged(bool mode)
     {
         isDestroyMode = mode;
+
         cursorView.SetActive(isDestroyMode);
+        destroyModeEffect.SetActive(isDestroyMode);
 
         AudioManager.instance.PlaySE(destroyModeSE);
     }
 
     // ===== View同期 =====
-    void CreateCellView(int x, int y, int value)
+    private void CreateCellView(int x, int y, int value)
     {
         var cell = Instantiate(cellPrefab).GetComponent<CellView>();
         cell.SetValue(value);
@@ -200,7 +215,7 @@ public class BoardManager : MonoBehaviour
         cells[x, y] = cell;
     }
 
-    void SyncViewFromBoard()
+    private void SyncViewFromBoard()
     {
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -219,6 +234,38 @@ public class BoardManager : MonoBehaviour
                         cells[x, y].SetValue(v);
                 }
             }
+    }
+
+    // ===== エフェクト =====
+    private void PlayMargeEffect()
+    {
+        if (margeRoutine != null)
+        {
+            StopCoroutine(margeRoutine);
+        }
+
+        margeRoutine = StartCoroutine(CoMargeEffect());
+    }
+
+    private IEnumerator CoMargeEffect()
+    {
+        margeEffect.SetActive(true);
+
+        CanvasGroup cg = margeEffect.GetComponent<CanvasGroup>();
+
+        cg.alpha = 1.0f;
+
+        float t = 0.0f;
+        while (t < effectFadeTime)
+        {
+            t += Time.deltaTime;
+            cg.alpha = 1f - (t / effectFadeTime);
+            yield return null;
+        }
+
+        cg.alpha = 0f;
+        margeEffect.SetActive(false);
+        margeRoutine = null;
     }
 
     // ===== ゲーム状態 =====
