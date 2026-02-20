@@ -14,6 +14,8 @@ public class BoardManager : MonoBehaviour
     [SerializeField] CellAnimator cellAnimator;
     [SerializeField] DestroyGaugeUI gaugeUI;
     [SerializeField] PauseManager pauseManager;
+    [SerializeField] Transform boardRoot;
+    [SerializeField] Transform mainCamera;
 
     [Header("セル設定")]
     [SerializeField] GameObject cellPrefab;
@@ -44,6 +46,9 @@ public class BoardManager : MonoBehaviour
     [SerializeField] GameObject destroyModeEffect;
     [SerializeField] GameObject margeEffect;
     [SerializeField] float effectFadeTime = 0.3f;
+    [SerializeField] RectTransform gameCanvas;
+    [SerializeField] float shakeTime = 0.15f;
+    [SerializeField] float shakePower = 15f;
 
     // ===== 内部状態 =====
     private CellView[,] cells;
@@ -57,7 +62,7 @@ public class BoardManager : MonoBehaviour
     private const float gaugeStep = 33.3f;
 
     private Coroutine margeRoutine;
-
+    private Coroutine shakeRoutine;
 
     // ===== 初期化 =====
     private void Start()
@@ -89,7 +94,7 @@ public class BoardManager : MonoBehaviour
     {
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
-                Instantiate(BGCellPrefab, new Vector3(x * cellSize, y * cellSize, 0), Quaternion.identity);
+                Instantiate(BGCellPrefab, new Vector3(x * cellSize, y * cellSize, 0), Quaternion.identity, boardRoot);
     }
 
     // ===== 予告セル =====
@@ -136,6 +141,7 @@ public class BoardManager : MonoBehaviour
         if (score <= 0) return;
 
         AudioManager.instance.PlaySE(destroySE);
+        PlayShake();
 
         boardSystem.ConsumeGauge(gaugeStep);
         scoreManager.Add(score);
@@ -209,9 +215,8 @@ public class BoardManager : MonoBehaviour
     // ===== View同期 =====
     private void CreateCellView(int x, int y, int value)
     {
-        var cell = Instantiate(cellPrefab).GetComponent<CellView>();
+        var cell = Instantiate(cellPrefab,new Vector3(x * cellSize, y * cellSize, 0), Quaternion.identity, boardRoot).GetComponent<CellView>();
         cell.SetValue(value);
-        cell.transform.position = new Vector3(x * cellSize, y * cellSize, 0);
         cells[x, y] = cell;
     }
 
@@ -266,6 +271,38 @@ public class BoardManager : MonoBehaviour
         cg.alpha = 0f;
         margeEffect.SetActive(false);
         margeRoutine = null;
+    }
+
+    private void PlayShake()
+    {
+        if (shakeRoutine != null)
+        {
+            StopCoroutine(shakeRoutine); 
+        }
+        shakeRoutine = StartCoroutine(CoShake());
+    }
+
+    private IEnumerator CoShake()
+    {
+        Vector3 origin = mainCamera.transform.localPosition;
+        float t = 0f;
+
+        while (t < shakeTime)
+        {
+            t += Time.deltaTime;
+
+            float damper = 1f - (t / shakeTime);
+
+            float x = Mathf.Sin(t * 40f) * shakePower * damper;
+            float y = Mathf.Cos(t * 35f) * shakePower * 0.6f * damper;
+
+            mainCamera.transform.localPosition = origin + new Vector3(x, y, 0);
+
+            yield return null;
+        }
+
+        mainCamera.transform.localPosition = origin;
+        shakeRoutine = null;
     }
 
     // ===== ゲーム状態 =====

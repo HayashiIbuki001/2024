@@ -3865,6 +3865,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1366602464}
   m_CullTransparentMesh: 1
+--- !u!1 &1412712171
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1412712172}
+  m_Layer: 5
+  m_Name: BoardRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1412712172
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1412712171}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 960, y: 540}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1454501620
 GameObject:
   m_ObjectHideFlags: 0
@@ -4807,6 +4842,8 @@ MonoBehaviour:
   cellAnimator: {fileID: 1899007800}
   gaugeUI: {fileID: 724994981}
   pauseManager: {fileID: 1184389232}
+  boardRoot: {fileID: 1412712172}
+  mainCamera: {fileID: 519420032}
   cellPrefab: {fileID: 4150478440360767197, guid: e3c3bcdd0ff19f74586b2ce03374ecc8, type: 3}
   BGCellPrefab: {fileID: 700464608908695337, guid: 30db523e2b492d04e90a6a94d66d0599, type: 3}
   cellSize: 1.1
@@ -4823,6 +4860,9 @@ MonoBehaviour:
   destroyModeEffect: {fileID: 2043606860}
   margeEffect: {fileID: 1567370985}
   effectFadeTime: 0.3
+  gameCanvas: {fileID: 1454501624}
+  shakeTime: 0.5
+  shakePower: 0.2
 --- !u!4 &1899007799
 Transform:
   m_ObjectHideFlags: 0
@@ -5157,3 +5197,4 @@ SceneRoots:
   - {fileID: 1454501624}
   - {fileID: 1184389236}
   - {fileID: 1175037831}
+  - {fileID: 1412712172}
